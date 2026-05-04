@@ -83,9 +83,54 @@
         // PDF.js 워커 설정 (성능 최적화 및 파싱 에러 방지)
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
+        // --------------------------------------------------------
+        // [초기 구동 샘플 데이터] (하얀 화면 방지용 튜토리얼)
+        // --------------------------------------------------------
+        const SAMPLE_NOVEL = {
+          id: "tutorial_novel",
+          meta: {
+            title: "엔진 사용법 튜토리얼",
+            author: "System",
+            coverBg: "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
+            description: "텍스트나 문서를 업로드하여 게임으로 만드는 엔진입니다. 이 튜토리얼을 먼저 확인해보세요.",
+            protagonist: { name: "테스터", role: "유저", pov: "System Access" },
+            statsConfig: [
+              { key: "desire", label: "Desire", color: "red" },
+              { key: "corruption", label: "Corrupt", color: "purple" }
+            ]
+          },
+          stages: [
+            { id: "tut_1", title: "엔진 작동 확인", charName: "가이드", role: "시스템", color: "from-blue-600", isUnlocked: true, firstScene: "intro" }
+          ],
+          scenes: {
+            "tut_1": {
+              "intro": {
+                "bg": "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
+                "character": { "name": "가이드", "role": "시스템", "color": "from-blue-600" },
+                "lines": [
+                  { "speaker": "시스템", "text": "환영합니다! 유니버설 비주얼 노벨 엔진이 정상적으로 로드되었습니다." },
+                  { "speaker": "시스템", "text": "이 엔진은 사용자가 입력한 소설 텍스트를 AI가 분석하여, 다중 분기 선택지가 포함된 쾌적한 게임으로 자동 렌더링해 줍니다." }
+                ],
+                "choices": [
+                  { "text": "[확인] 알겠습니다. 직접 만들어볼게요.", "next": "end", "impact": { "desire": 10 } },
+                  { "text": "[취소] 라이브러리로 돌아갑니다.", "next": "end", "impact": { "corruption": 10 } }
+                ]
+              },
+              "end": {
+                "bg": "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
+                "lines": [
+                  { "speaker": "시스템", "text": "이제 라이브러리로 돌아가서 [AI 다중 분기 스크립트 변환기]에 소설 텍스트를 붙여넣어 보세요!" }
+                ],
+                "endStage": true
+              }
+            }
+          }
+        };
+
         const App = () => {
           const [appState, setAppState] = useState('LIBRARY');
-          const [novelLibrary, setNovelLibrary] = useState([]);
+          // 기본 튜토리얼 데이터 탑재
+          const [novelLibrary, setNovelLibrary] = useState([SAMPLE_NOVEL]);
           
           const [currentNovel, setCurrentNovel] = useState(null);
           const [unlockedStages, setUnlockedStages] = useState({});
@@ -100,6 +145,8 @@
           const [rawText, setRawText] = useState("");
           const [isGenerating, setIsGenerating] = useState(false);
           const [errorMsg, setErrorMsg] = useState("");
+          
+          const [appendTargetId, setAppendTargetId] = useState("NEW");
 
           const scrollRef = useRef(null);
 
@@ -176,12 +223,11 @@
               setIsGenerating(false);
             }
             
-            // 동일 파일 재업로드를 위해 value 초기화
             event.target.value = null;
           };
 
           // --------------------------------------------------------
-          // [핵심 변경] 예측 불가 선택지 & 회복 기회(Recovery) 부여 AI 패치
+          // 예측 불가 선택지 & 누적 이어쓰기(Append) 로직
           // --------------------------------------------------------
           const handleAIGeneration = async () => {
             if (!rawText.trim()) {
@@ -217,7 +263,7 @@
     ]
   },
   "stages": [
-    { "id": "stage_1", "title": "에피소드 1", "charName": "상대방", "role": "역할", "color": "from-red-600", "isUnlocked": true, "firstScene": "scene1" }
+    { "id": "stage_1", "title": "에피소드 제목", "charName": "상대방", "role": "역할", "color": "from-red-600", "isUnlocked": true, "firstScene": "scene1" }
   ],
   "scenes": {
     "stage_1": {
@@ -225,51 +271,36 @@
         "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
         "character": { "name": "상대방", "role": "역할", "color": "from-red-600" },
         "lines": [
-          { "speaker": "주인공", "text": "원문 초반부 문장 1" },
-          { "speaker": "상대방", "text": "원문 초반부 문장 2" }
+          { "speaker": "주인공", "text": "원문 초반부 문장 1" }
         ],
         "choices": [
           { "text": "[순응] 그녀의 이끌림에 몸을 맡긴다.", "next": "scene2", "impact": { "desire": 10 } },
-          { "text": "[통제] 오히려 그녀의 손목을 강하게 쥐어 제압한다.", "next": "scene1_recovery", "impact": { "corruption": 5 } }
+          { "text": "[통제] 그녀를 제압한다.", "next": "scene1_recovery", "impact": { "corruption": 5 } }
         ]
       },
       "scene1_recovery": {
-        "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
-        "character": { "name": "상대방", "role": "역할", "color": "from-red-600" },
-        "lines": [
-          { "speaker": "주인공", "text": "내 뜻밖의 거친 반응에 그녀는 잠시 당황했다." },
-          { "speaker": "상대방", "text": "어머... 이런 취향이실 줄은 몰랐네요. 더 해봐요." }
-        ],
+        "lines": [ { "speaker": "상대방", "text": "어머... 더 해봐요." } ],
         "choices": [
-          { "text": "[진행] 멈추지 않고 다음 선을 넘는다.", "next": "scene2", "impact": { "desire": 5 } },
-          { "text": "[도발] 그녀의 귓가에 조롱하듯 속삭인다.", "next": "scene2", "impact": { "corruption": 10 } }
+          { "text": "[진행] 다음 선을 넘는다.", "next": "scene2", "impact": { "desire": 5 } },
+          { "text": "[도발] 속삭인다.", "next": "scene2", "impact": { "corruption": 10 } }
         ]
       },
       "scene2": {
-        "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
-        "lines": [
-          { "speaker": "주인공", "text": "원문 중반부 이어지는 내용..." }
-        ],
+        "lines": [ { "speaker": "주인공", "text": "원문 중반부 이어지는 내용..." } ],
         "choices": [
           { "text": "[탐닉] 더 깊이 들어간다.", "next": "scene3", "impact": { "corruption": 15 } },
-          { "text": "[망설임] 순간 멈칫하며 이성을 찾으려 한다.", "next": "scene2_recovery", "impact": { "corruption": -5 } }
+          { "text": "[망설임] 이성을 찾으려 한다.", "next": "scene2_recovery", "impact": { "corruption": -5 } }
         ]
       },
       "scene2_recovery": {
-        "lines": [
-          { "speaker": "상대방", "text": "이제 와서 빼는 거예요? 이미 늦었어요." },
-          { "speaker": "주인공", "text": "그녀의 도발에 내 알량한 이성은 다시 한번 부서졌다." }
-        ],
+        "lines": [ { "speaker": "상대방", "text": "이제 와서 빼는 거예요?" } ],
         "choices": [
-          { "text": "[포기] 완전히 그녀에게 주도권을 넘긴다.", "next": "scene3", "impact": { "desire": 10 } },
-          { "text": "[반격] 다시 거칠게 그녀를 몰아붙인다.", "next": "scene3", "impact": { "corruption": 10 } }
+          { "text": "[포기] 완전히 넘긴다.", "next": "scene3", "impact": { "desire": 10 } },
+          { "text": "[반격] 거칠게 몰아붙인다.", "next": "scene3", "impact": { "corruption": 10 } }
         ]
       },
       "scene3": {
-        "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
-        "lines": [
-          { "speaker": "주인공", "text": "원문 결말부 내용..." }
-        ],
+        "lines": [ { "speaker": "주인공", "text": "원문 결말부 내용..." } ],
         "endStage": true
       }
     }
@@ -296,9 +327,41 @@
               jsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
               const parsedNovel = JSON.parse(jsonText);
               
-              setNovelLibrary(prev => [parsedNovel, ...prev]);
-              setRawText("");
-              loadNovel(parsedNovel);
+              // 누적 처리 로직
+              if (appendTargetId === "NEW") {
+                parsedNovel.id = 'novel_' + Date.now();
+                setNovelLibrary(prev => [parsedNovel, ...prev]);
+                setRawText("");
+                loadNovel(parsedNovel);
+              } else {
+                setNovelLibrary(prev => {
+                  const updatedLibrary = [...prev];
+                  const targetIndex = updatedLibrary.findIndex(n => n.id === appendTargetId);
+                  
+                  if (targetIndex !== -1) {
+                    const targetNovel = JSON.parse(JSON.stringify(updatedLibrary[targetIndex]));
+                    const newStageId = 'stage_' + Date.now();
+                    const oldStageId = parsedNovel.stages[0].id;
+                    
+                    const newStage = { ...parsedNovel.stages[0], id: newStageId };
+                    newStage.isUnlocked = true; 
+                    
+                    targetNovel.stages.push(newStage);
+                    targetNovel.scenes[newStageId] = parsedNovel.scenes[oldStageId];
+                    
+                    updatedLibrary[targetIndex] = targetNovel;
+                    
+                    setTimeout(() => {
+                      setRawText("");
+                      alert(`[${targetNovel.meta.title}]에 새로운 에피소드가 성공적으로 추가되었습니다!`);
+                      loadNovel(targetNovel);
+                    }, 100);
+                    
+                    return updatedLibrary;
+                  }
+                  return prev;
+                });
+              }
 
             } catch (err) {
               console.error(err);
@@ -410,7 +473,8 @@
             }
           };
 
-          const showActionArea = !isTyping && lineIndex === sceneData?.lines.length - 1 && (sceneData?.choices || sceneData?.endStage);
+          // [핵심 버그 수정] 초기 로딩 에러(TypeError)를 방지하는 방어 코드
+          const showActionArea = !isTyping && sceneData?.lines && lineIndex === sceneData.lines.length - 1 && (sceneData?.choices || sceneData?.endStage);
 
           if (appState === 'LIBRARY') {
             return (
@@ -444,10 +508,25 @@
                       <textarea 
                         value={rawText}
                         onChange={(e) => setRawText(e.target.value)}
-                        placeholder="이곳에 소설 내용을 붙여넣거나 우측 상단의 [문서 가져오기] 버튼으로 텍스트 파일(txt, docx, pdf)을 업로드하세요. AI가 흐름에 맞게 씬을 나누고 계속해서 선택지를 만들어냅니다."
+                        placeholder="이곳에 소설 1화를 붙여넣어 새 게임을 만들고, 2화부터는 아래 옵션에서 '기존 게임에 에피소드 추가'를 선택해 누적시킬 수 있습니다."
                         className="w-full h-[200px] md:h-[250px] bg-black/50 border border-zinc-700 rounded-lg p-4 text-zinc-300 text-sm md:text-base focus:outline-none focus:border-red-500 custom-scrollbar resize-none mb-4"
                         disabled={isGenerating}
                       />
+                      
+                      <div className="flex flex-col md:flex-row items-start md:items-center gap-3 mb-4 bg-zinc-800/50 p-3 rounded-md border border-zinc-700/50">
+                        <span className="text-sm font-bold text-zinc-400 shrink-0">저장 방식:</span>
+                        <select 
+                          value={appendTargetId} 
+                          onChange={(e) => setAppendTargetId(e.target.value)}
+                          className="flex-grow bg-zinc-900 border border-zinc-600 text-white text-sm rounded-md p-2 outline-none focus:border-red-500 cursor-pointer"
+                        >
+                          <option value="NEW">✨ 새로운 게임으로 생성 (1화)</option>
+                          {novelLibrary.map(n => (
+                            <option key={n.id} value={n.id}>➕ 기존 게임에 에피소드 누적하기 ({n.meta.title})</option>
+                          ))}
+                        </select>
+                      </div>
+
                       <button 
                         onClick={handleAIGeneration}
                         disabled={isGenerating}
@@ -455,9 +534,9 @@
                           ${isGenerating ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed' : 'bg-red-700 hover:bg-red-600 text-white shadow-lg'}`}
                       >
                         {isGenerating ? (
-                          <><IconCpu size={24} className="animate-spin-slow" /> 처리 중입니다...</>
+                          <><IconCpu size={24} className="animate-spin-slow" /> 씬 분할 및 선택지 생성 중...</>
                         ) : (
-                          <><IconPlay size={24} /> 다중 선택지 게임으로 변환</>
+                          <><IconPlay size={24} /> 텍스트를 게임으로 변환하기</>
                         )}
                       </button>
                     </div>
@@ -475,6 +554,7 @@
                           <div className="absolute bottom-0 left-0 p-5 w-full">
                             <span className="bg-red-700 text-white px-2 py-1 font-black text-[10px] uppercase tracking-widest mb-2 inline-block shadow-lg">POV: {novel.meta.protagonist.name}</span>
                             <h2 className="text-xl md:text-2xl font-black mb-1 leading-tight">{novel.meta.title}</h2>
+                            <p className="text-zinc-400 text-xs md:text-sm mb-3 line-clamp-2">{novel.meta.description}</p>
                             <div className="flex items-center text-red-400 font-bold text-sm group-hover:text-white transition-colors">
                               <IconPlay size={16} className="mr-1" /> PLAY
                             </div>
@@ -604,8 +684,6 @@
     </script>
 </body>
 </html>
-
-
 
 
 ```
