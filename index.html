@@ -74,9 +74,9 @@
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
         // --------------------------------------------------------
-        // [스마트 분할 함수] 최대 5500자를 기준으로 문단이 끊기지 않게 쪼갬
+        // [스마트 분할 함수 업데이트] JSON 에러 방지를 위해 2000자로 대폭 축소
         // --------------------------------------------------------
-        const chunkText = (text, maxLength = 5500) => {
+        const chunkText = (text, maxLength = 2000) => {
           const paragraphs = text.split('\n');
           const chunks = [];
           let currentChunk = "";
@@ -111,23 +111,20 @@
           const [isGenerating, setIsGenerating] = useState(false);
           const [errorMsg, setErrorMsg] = useState("");
           
-          // [추가] 자동 분할 상태 관리
           const [textChunks, setTextChunks] = useState([]);
           const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
           const [appendTargetId, setAppendTargetId] = useState("NEW");
 
           const scrollRef = useRef(null);
 
-          // --------------------------------------------------------
-          // 1. 파일 업로드 및 자동 분할 로직
-          // --------------------------------------------------------
           const processLoadedText = (fullText) => {
-            const chunks = chunkText(fullText, 5500);
+            // 문서를 통째로 올렸을 때 안전한 크기(2000자)로 파트 분할
+            const chunks = chunkText(fullText, 2000);
             if(chunks.length > 1) {
               setTextChunks(chunks);
               setCurrentChunkIndex(0);
               setRawText(chunks[0]);
-              alert(`문서가 너무 길어 AI가 가장 쾌적하게 소화할 수 있는 ${chunks.length}개의 파트로 자동 분할되었습니다!`);
+              alert(`문서가 안전하게 ${chunks.length}개의 파트로 자동 분할되었습니다!`);
             } else {
               setTextChunks([]);
               setCurrentChunkIndex(0);
@@ -203,7 +200,7 @@
           };
 
           const handleManualSplit = () => {
-            const chunks = chunkText(rawText, 5500);
+            const chunks = chunkText(rawText, 2000);
             if(chunks.length > 1) {
               setTextChunks(chunks);
               setCurrentChunkIndex(0);
@@ -215,7 +212,7 @@
           };
 
           // --------------------------------------------------------
-          // 2. AI 변환 및 자동 파트 이동 로직
+          // [핵심 변경] 선택지 2개 무조건 강제 & 에러 상세 표기
           // --------------------------------------------------------
           const handleAIGeneration = async () => {
             if (!rawText.trim()) {
@@ -226,15 +223,57 @@
             setIsGenerating(true);
             setErrorMsg("");
 
-            const systemInstruction = `당신은 비주얼 노벨 게임 엔진의 텍스트 파서입니다. 사용자가 입력한 소설 원문을 100% 그대로 JSON 배열로 이식하세요.
+            // 프롬프트를 더욱 엄격하게 통제
+            const systemInstruction = `당신은 비주얼 노벨 게임 엔진의 완벽한 텍스트 파서입니다.
 
-[절대 규칙]
-1. 입력된 텍스트의 흐름에 따라 3~5개의 연속된 씬(scene1, scene2...)으로 분배하세요.
-2. 각 씬의 마지막에는 반드시 2개의 선택지(choices)를 창작하세요.
-3. 선택지 중 하나는 '위기'나 '뜻밖의 변수'를 겪는 우회 씬(회복 루트)으로 연결하세요.
-4. 화자가 명확한 대사는 speaker에 이름을 넣고, 지문은 주인공 이름을 넣으세요.
-5. 이야기의 최종 마지막 씬에만 "endStage": true 속성을 넣으세요.
-6. 오직 JSON 데이터만 출력하세요.`;
+[가장 중요한 치명적 절대 규칙]
+1. 각 씬의 "choices" 배열은 **무조건, 예외 없이 정확히 2개의 객체**를 가져야 합니다. 선택지가 1개이거나 없으면 시스템 에러가 발생합니다.
+2. 이야기의 가장 마지막 씬(원문 텍스트가 완전히 끝나는 결말 부분)에만 "endStage": true 속성을 넣고, 이곳에만 choices를 비우세요. 그 외의 모든 씬(진행 씬, 회복 씬 등)에는 반드시 choices 2개를 만드세요.
+3. 선택지 2개 중 하나는 순행 루트, 하나는 뜻밖의 우회/회복 루트로 연결하세요.
+4. 출력은 오직 순수한 JSON 형식이어야 합니다. 마크다운(\`\`\`json)이나 다른 설명 텍스트를 절대 추가하지 마세요.
+
+[JSON 포맷 구조]
+{
+  "id": "novel_auto",
+  "meta": {
+    "title": "자동 생성 스토리",
+    "author": "AI",
+    "coverBg": "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
+    "description": "사용자 입력 원문 무삭제 진행본",
+    "protagonist": { "name": "주인공이름", "role": "주인공역할", "pov": "Player POV" },
+    "statsConfig": [
+      { "key": "desire", "label": "Desire", "color": "red" },
+      { "key": "corruption", "label": "Corrupt", "color": "purple" }
+    ]
+  },
+  "stages": [
+    { "id": "stage_1", "title": "에피소드 제목", "charName": "상대방", "role": "역할", "color": "from-red-600", "isUnlocked": true, "firstScene": "scene1" }
+  ],
+  "scenes": {
+    "stage_1": {
+      "scene1": {
+        "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
+        "character": { "name": "상대방", "role": "역할", "color": "from-red-600" },
+        "lines": [ { "speaker": "주인공", "text": "원문 문장..." } ],
+        "choices": [
+          { "text": "[선택1]", "next": "scene2", "impact": { "desire": 10 } },
+          { "text": "[선택2]", "next": "scene1_recovery", "impact": { "corruption": 5 } }
+        ]
+      },
+      "scene1_recovery": {
+        "lines": [ { "speaker": "상대방", "text": "회복 씬 내용..." } ],
+        "choices": [
+          { "text": "[다시 진행]", "next": "scene2", "impact": { "desire": 5 } },
+          { "text": "[도발]", "next": "scene2", "impact": { "corruption": 10 } }
+        ]
+      },
+      "scene2": {
+        "lines": [ { "speaker": "주인공", "text": "마지막 결말..." } ],
+        "endStage": true
+      }
+    }
+  }
+}`;
 
             try {
               const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
@@ -251,9 +290,22 @@
               });
 
               const data = await response.json();
+              
+              if (!data.candidates || data.candidates.length === 0 || !data.candidates[0].content) {
+                throw new Error("AI 응답이 차단되었거나 비어있습니다.");
+              }
+
               let jsonText = data.candidates[0].content.parts[0].text;
+              
+              // 불필요한 마크다운 및 여백 제거
               jsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
-              const parsedNovel = JSON.parse(jsonText);
+              
+              let parsedNovel;
+              try {
+                parsedNovel = JSON.parse(jsonText);
+              } catch (parseError) {
+                throw new Error("생성된 데이터 구조가 끊어졌습니다. 텍스트 분할이 필요합니다.");
+              }
               
               let createdNovelId = "";
 
@@ -291,25 +343,22 @@
                 });
               }
 
-              // [핵심] 분할된 다음 파트가 있으면 자동으로 세팅해준다!
               setTimeout(() => {
                 if (textChunks.length > 0 && currentChunkIndex < textChunks.length - 1) {
                   const nextIdx = currentChunkIndex + 1;
                   setCurrentChunkIndex(nextIdx);
                   setRawText(textChunks[nextIdx]);
-                  setAppendTargetId(createdNovelId); // 무조건 방금 작업한 게임에 누적하도록 고정
+                  setAppendTargetId(createdNovelId); 
                   
                   alert(`[파트 ${currentChunkIndex + 1}/${textChunks.length}] 변환 성공! 텍스트 창에 다음 파트가 자동으로 로드되었습니다.\n버튼을 눌러 이어서 누적하세요.`);
                 } else {
-                  // 분할 작업 완전 종료
                   setRawText("");
                   setTextChunks([]);
                   setCurrentChunkIndex(0);
                   
                   const targetNovelToLoad = novelLibrary.find(n => n.id === createdNovelId) || parsedNovel;
-                  alert(`모든 변환이 완료되었습니다! 생성된 게임(${targetNovelToLoad.stages ? targetNovelToLoad.stages.length : 1}화 누적)을 실행합니다.`);
+                  alert(`모든 변환이 완료되었습니다! 생성된 게임을 실행합니다.`);
                   
-                  // 최근 업데이트된 상태의 라이브러리 데이터를 가져오기 위해 강제 지연 후 로드
                   setNovelLibrary(currentLib => {
                     const finalNovel = currentLib.find(n => n.id === createdNovelId) || parsedNovel;
                     loadNovel(finalNovel);
@@ -320,7 +369,9 @@
 
             } catch (err) {
               console.error(err);
-              showError("텍스트 변환 실패: 텍스트가 너무 길거나 API 응답 구조 오류입니다.");
+              let detailMsg = "텍스트가 너무 길거나 응답 구조 오류입니다.";
+              if (err.message) detailMsg = err.message;
+              showError(`변환 실패: ${detailMsg}`);
             } finally {
               setIsGenerating(false);
             }
@@ -434,9 +485,6 @@
 
           const showActionArea = !isTyping && sceneData?.lines && lineIndex === sceneData.lines.length - 1 && (sceneData?.choices || sceneData?.endStage);
 
-          // ==========================================
-          // [VIEW 1] 서재 (Library) - 분할 UI 반영
-          // ==========================================
           if (appState === 'LIBRARY') {
             return (
               <div className="fixed inset-0 w-full h-full bg-zinc-950 text-white flex flex-col overflow-y-auto">
@@ -465,7 +513,7 @@
                           <IconScissors size={16} /> 텍스트 수동 쪼개기
                         </button>
                         <div className="relative overflow-hidden cursor-pointer group flex items-center gap-1 text-xs md:text-sm text-zinc-300 hover:text-white bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded-md transition-colors shadow-lg">
-                          <input type="file" accept=".json,application/json,.txt,text/plain,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,application/pdf" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                          <input type="file" accept="*/*" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                           <IconUploadCloud size={16} /> 문서 가져오기
                         </div>
                       </div>
@@ -474,15 +522,15 @@
                       
                       {textChunks.length > 1 && (
                         <div className="mb-4 bg-red-900/30 border border-red-800 text-red-200 p-3 rounded-md text-sm md:text-base font-bold flex items-center justify-between">
-                          <span>[자동 분할 진행 중] 방대한 텍스트를 처리하기 위해 여러 번에 나누어 변환합니다.</span>
-                          <span className="bg-red-700 text-white px-3 py-1 rounded-full">현재 {currentChunkIndex + 1} / {textChunks.length} 파트</span>
+                          <span>[자동 분할 진행 중] 방대한 텍스트를 안정적으로 처리하기 위해 나뉘어 변환됩니다.</span>
+                          <span className="bg-red-700 text-white px-3 py-1 rounded-full shrink-0 ml-2">현재 {currentChunkIndex + 1} / {textChunks.length} 파트</span>
                         </div>
                       )}
 
                       <textarea 
                         value={rawText}
                         onChange={(e) => setRawText(e.target.value)}
-                        placeholder="이곳에 소설 내용을 붙여넣거나 [문서 가져오기]로 PDF를 업로드하세요. 너무 길면 엔진이 스스로 분할하여 차례대로 변환해 줍니다."
+                        placeholder="이곳에 소설 내용을 붙여넣거나 [문서 가져오기]로 파일을 업로드하세요. 긴 텍스트는 엔진이 스스로 분할하여 차례대로 변환해 줍니다."
                         className="w-full h-[200px] md:h-[250px] bg-black/50 border border-zinc-700 rounded-lg p-4 text-zinc-300 text-sm md:text-base focus:outline-none focus:border-red-500 custom-scrollbar resize-none mb-4"
                         disabled={isGenerating || textChunks.length > 1}
                       />
@@ -492,7 +540,7 @@
                         <select 
                           value={appendTargetId} 
                           onChange={(e) => setAppendTargetId(e.target.value)}
-                          disabled={textChunks.length > 1 && currentChunkIndex > 0} // 분할 중엔 타겟 변경 불가
+                          disabled={textChunks.length > 1 && currentChunkIndex > 0}
                           className="flex-grow bg-zinc-900 border border-zinc-600 text-white text-sm rounded-md p-2 outline-none focus:border-red-500 cursor-pointer disabled:opacity-50"
                         >
                           <option value="NEW">✨ 새로운 게임으로 생성 (1화)</option>
@@ -671,7 +719,6 @@
     </script>
 </body>
 </html>
-
 
 
 ```
