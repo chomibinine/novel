@@ -4,22 +4,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Visual Novel Engine</title>
+    <title>AI Visual Novel Engine</title>
     
-    <!-- Tailwind CSS (스타일링) -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- React & ReactDOM (코어) -->
+    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     
-    <!-- Babel (브라우저에서 JSX 컴파일) -->
+    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 파일 파싱 라이브러리 추가 (DOCX, PDF) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     
     <style>
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
         
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .animate-spin-slow { animation: spin 2s linear infinite; }
+
         body { 
           margin: 0; 
           background: #000; 
@@ -28,7 +35,6 @@
           -webkit-touch-callout: none;
         }
         
-        /* 모바일 터치 스크롤 최적화 스크롤바 */
         .custom-scrollbar::-webkit-scrollbar { width: 5px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #18181b; border-radius: 4px; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #dc2626; border-radius: 4px; }
@@ -36,14 +42,15 @@
     </style>
 </head>
 <body>
-    <!-- React 앱이 렌더링 될 루트 -->
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        const apiKey = ""; 
+
         // ==========================================
-        // [SVG 아이콘 컴포넌트] 외부 라이브러리 없이 자체 구현
+        // [SVG 아이콘 컴포넌트]
         // ==========================================
         const IconChevronRight = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>;
         const IconShieldAlert = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
@@ -55,61 +62,30 @@
         const IconDroplets = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7 2.9 7 2.9s-2.29 6.16-2.29 6.16c-1.14.93-1.71 2.03-1.71 3.19C3 14.47 4.8 16.3 7 16.3z"/><path d="M20.5 10.4c1.14.93 1.71 2.03 1.71 3.19 0 2.22-1.8 4.05-4 4.05s-4-1.83-4-4.05c0-1.16.57-2.26 1.71-3.19.01 0 2.29-6.16 2.29-6.16s2.28 6.16 2.29 6.16z"/></svg>;
         const IconLibrary = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>;
         const IconPlay = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
+        const IconCpu = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>;
         const IconUploadCloud = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/><polyline points="16 16 12 12 8 16"/></svg>;
         const IconLock = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
-        const IconUnlock = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>;
-        const IconDownload = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
 
-        // ==========================================
-        // 샘플(튜토리얼) 소설 데이터
-        // ==========================================
-        const SAMPLE_NOVEL = {
-          id: "sample_engine",
-          meta: {
-            title: "엔진 튜토리얼 데이터",
-            author: "System",
-            coverBg: "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
-            description: "외부 소설 데이터를 불러오기 전에 엔진이 정상 작동하는지 확인하는 샘플입니다.",
-            protagonist: { name: "테스터", role: "마스터", pov: "System Access" },
-            statsConfig: [
-              { key: "desire", label: "Desire", color: "red" },
-              { key: "corruption", label: "Corrupt", color: "purple" }
-            ]
-          },
-          stages: [
-            { id: 'tut_1', title: '튜토리얼 스테이지', charName: '시스템 가이드', role: '안내자', color: 'from-blue-600', isUnlocked: true, firstScene: 'intro' }
-          ],
-          scenes: {
-            "tut_1": {
-              intro: {
-                bg: "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
-                character: { name: "안내자", role: "가이드", color: "from-blue-600" },
-                lines: [
-                  { speaker: "시스템", text: "엔진이 정상적으로 로드되었습니다!" },
-                  { speaker: "시스템", text: "이곳은 외부 JSON 데이터를 읽어들여 소설을 출력하는 '유니버설 비주얼 노벨 엔진'입니다." },
-                  { speaker: "시스템", text: "이제 깃허브에 이 파일(index.html)과 함께 'novel.json'을 올려주시면 진짜 게임이 시작됩니다." }
-                ],
-                choices: [
-                  { text: "[확인] 엔진 작동을 완료합니다.", next: "end", impact: { desire: 10, corruption: 10 } }
-                ]
-              },
-              end: {
-                bg: "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
-                lines: [
-                  { speaker: "시스템", text: "테스트가 완료되었습니다. Library 화면에서 새로운 데이터를 로드해보세요." }
-                ],
-                endStage: true
-              }
+        async function fetchWithRetry(url, options, retries = 5) {
+          const delays = [1000, 2000, 4000, 8000, 16000];
+          for (let i = 0; i < retries; i++) {
+            try {
+              const res = await fetch(url, options);
+              if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+              return res;
+            } catch (err) {
+              if (i === retries - 1) throw err;
+              await new Promise(r => setTimeout(r, delays[i]));
             }
           }
-        };
+        }
 
-        // ==========================================
-        // [유니버설 렌더링 엔진 코어]
-        // ==========================================
+        // PDF.js 워커 설정 (성능 최적화 및 파싱 에러 방지)
+        window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+
         const App = () => {
           const [appState, setAppState] = useState('LIBRARY');
-          const [novelLibrary, setNovelLibrary] = useState([SAMPLE_NOVEL]);
+          const [novelLibrary, setNovelLibrary] = useState([]);
           
           const [currentNovel, setCurrentNovel] = useState(null);
           const [unlockedStages, setUnlockedStages] = useState({});
@@ -121,48 +97,208 @@
           const [displayedText, setDisplayedText] = useState("");
           const [isTyping, setIsTyping] = useState(false);
           
+          const [rawText, setRawText] = useState("");
+          const [isGenerating, setIsGenerating] = useState(false);
+          const [errorMsg, setErrorMsg] = useState("");
+
           const scrollRef = useRef(null);
 
           // --------------------------------------------------------
-          // 파일 업로드 및 Fetch (깃허브 연동)
+          // [추가 기능] 파일 업로드 (txt, docx, pdf, json) 파싱 로직
           // --------------------------------------------------------
-          const loadJsonFromUrl = async () => {
-            try {
-              const response = await fetch('./novel.json');
-              if (!response.ok) throw new Error("File not found");
-              const data = await response.json();
-              
-              setNovelLibrary(prev => {
-                if (prev.find(n => n.id === data.id)) return prev;
-                return [...prev, data];
-              });
-              alert("novel.json 파일이 성공적으로 로드되었습니다!");
-            } catch (error) {
-              alert("서버(루트 경로)에서 novel.json 파일을 찾을 수 없습니다. 깃허브에 파일이 올라갔는지 확인해주세요.");
-              console.error(error);
-            }
-          };
-
           const handleFileUpload = (event) => {
             const file = event.target.files[0];
             if (!file) return;
-            const reader = new FileReader();
-            reader.onload = (e) => {
-              try {
-                const parsedData = JSON.parse(e.target.result);
-                const newData = Array.isArray(parsedData) ? parsedData : [parsedData];
-                setNovelLibrary(prev => [...prev, ...newData]);
-                alert("로컬 파일 로드 성공!");
-              } catch (error) {
-                alert("JSON 파싱 에러: 파일 형식을 확인해주세요.");
-              }
-            };
-            reader.readAsText(file);
+
+            const ext = file.name.split('.').pop().toLowerCase();
+            setIsGenerating(true);
+
+            if (ext === 'json') {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                try {
+                  const parsedData = JSON.parse(e.target.result);
+                  const newData = Array.isArray(parsedData) ? parsedData : [parsedData];
+                  setNovelLibrary(prev => [...newData, ...prev]);
+                  loadNovel(newData[0]);
+                } catch (error) {
+                  showError("JSON 파싱 에러: 파일 형식을 확인해주세요.");
+                } finally {
+                  setIsGenerating(false);
+                }
+              };
+              reader.readAsText(file);
+            } else if (ext === 'txt') {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                setRawText(e.target.result);
+                setIsGenerating(false);
+              };
+              reader.readAsText(file);
+            } else if (ext === 'docx') {
+              const reader = new FileReader();
+              reader.onload = async (e) => {
+                try {
+                  const result = await mammoth.extractRawText({arrayBuffer: e.target.result});
+                  setRawText(result.value);
+                } catch(err) {
+                  showError("DOCX 추출에 실패했습니다.");
+                  console.error(err);
+                } finally {
+                  setIsGenerating(false);
+                }
+              };
+              reader.readAsArrayBuffer(file);
+            } else if (ext === 'pdf') {
+              const reader = new FileReader();
+              reader.onload = async (e) => {
+                try {
+                  const typedarray = new Uint8Array(e.target.result);
+                  const pdf = await pdfjsLib.getDocument(typedarray).promise;
+                  let text = "";
+                  for (let i = 1; i <= pdf.numPages; i++) {
+                    const page = await pdf.getPage(i);
+                    const textContent = await page.getTextContent();
+                    const pageText = textContent.items.map(item => item.str).join(' ');
+                    text += pageText + "\n";
+                  }
+                  setRawText(text);
+                } catch(err) {
+                  showError("PDF 추출에 실패했습니다.");
+                  console.error(err);
+                } finally {
+                  setIsGenerating(false);
+                }
+              };
+              reader.readAsArrayBuffer(file);
+            } else {
+              showError("지원하지 않는 파일 형식입니다 (.txt, .docx, .pdf, .json 지원)");
+              setIsGenerating(false);
+            }
+            
+            // 동일 파일 재업로드를 위해 value 초기화
+            event.target.value = null;
           };
 
           // --------------------------------------------------------
-          // 엔진 로직
+          // [핵심 변경] 연속 씬 분할 & 무조건 2개 선택지 강제 시스템
           // --------------------------------------------------------
+          const handleAIGeneration = async () => {
+            if (!rawText.trim()) {
+              showError("텍스트를 입력해주세요.");
+              return;
+            }
+            
+            setIsGenerating(true);
+            setErrorMsg("");
+
+            const systemInstruction = `당신은 비주얼 노벨 게임 엔진의 완벽한 텍스트 파서입니다. 사용자가 입력한 소설 원문을 단 한 글자도 생략하지 말고 100% 그대로 JSON 배열로 이식해야 합니다.
+
+[절대 규칙]
+1. 입력된 원문 텍스트가 길다면, 글의 흐름(Part A, Part B 등)에 따라 반드시 3~5개의 연속된 씬(scene1, scene2, scene3...)으로 나누어 분배하세요. 한 씬에 전부 때려넣지 마세요.
+2. 각 씬의 마지막에는 **반드시 2개의 선택지(choices)**를 창작하여 다음 씬으로 연결하세요. 선택지가 1개이거나 없으면 절대 안 됩니다.
+3. 원문의 스토리를 따라가는 '진행 루트'와 게임이 끝나는 '파멸(Bad End) 루트'를 선택지로 구성하면 좋습니다.
+4. 화자가 명확한 대사는 speaker에 이름을 넣고, 행동이나 심리 묘사 등 지문은 speaker에 주인공 이름(예: 강진혁)을 넣으세요.
+5. 이야기의 맨 마지막 씬(원문이 끝나는 부분)이나 배드 엔딩 씬에만 "endStage": true 속성을 넣고, 그곳에는 선택지(choices)를 빼세요.
+6. 오직 아래 JSON 구조에 맞추어 JSON 데이터만 출력하세요. 마크다운(\`\`\`json)은 제외하세요.
+
+[JSON 구조 포맷 예시]
+{
+  "id": "novel_auto",
+  "meta": {
+    "title": "자동 생성 스토리",
+    "author": "AI 파서",
+    "coverBg": "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
+    "description": "사용자 입력 원문 무삭제 연속 진행본",
+    "protagonist": { "name": "주인공이름", "role": "주인공역할", "pov": "Player POV" },
+    "statsConfig": [
+      { "key": "desire", "label": "Desire", "color": "red" },
+      { "key": "corruption", "label": "Corrupt", "color": "purple" }
+    ]
+  },
+  "stages": [
+    { "id": "stage_1", "title": "에피소드 1", "charName": "상대방", "role": "역할", "color": "from-red-600", "isUnlocked": true, "firstScene": "scene1" }
+  ],
+  "scenes": {
+    "stage_1": {
+      "scene1": {
+        "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
+        "character": { "name": "상대방", "role": "역할", "color": "from-red-600" },
+        "lines": [
+          { "speaker": "화자이름", "text": "원문 초반부 문장 1" },
+          { "speaker": "화자이름", "text": "원문 초반부 문장 2" }
+        ],
+        "choices": [
+          { "text": "[수락] 계속 이야기를 듣는다.", "next": "scene2", "impact": { "desire": 10 } },
+          { "text": "[거절] 당장 방을 나간다.", "next": "bad_end_1", "impact": { "desire": -10 } }
+        ]
+      },
+      "scene2": {
+        "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
+        "lines": [
+          { "speaker": "화자", "text": "원문 중반부 이어지는 내용..." }
+        ],
+        "choices": [
+          { "text": "[탐닉] 더 깊이 들어간다.", "next": "scene3", "impact": { "corruption": 15 } },
+          { "text": "[망설임] 잠시 멈추고 생각한다.", "next": "bad_end_2", "impact": { "corruption": -5 } }
+        ]
+      },
+      "scene3": {
+        "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
+        "lines": [
+          { "speaker": "화자", "text": "원문 결말부 내용..." }
+        ],
+        "endStage": true
+      },
+      "bad_end_1": {
+        "lines": [ { "speaker": "시스템", "text": "[Game Over] 잘못된 선택으로 도망쳤습니다." } ],
+        "endStage": true
+      },
+      "bad_end_2": {
+        "lines": [ { "speaker": "시스템", "text": "[Game Over] 망설이다가 사냥감을 놓쳤습니다." } ],
+        "endStage": true
+      }
+    }
+  }
+}`;
+
+            try {
+              const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+              const payload = {
+                contents: [{ parts: [{ text: rawText }] }],
+                systemInstruction: { parts: [{ text: systemInstruction }] },
+                generationConfig: { responseMimeType: "application/json" }
+              };
+
+              const response = await fetchWithRetry(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+              });
+
+              const data = await response.json();
+              let jsonText = data.candidates[0].content.parts[0].text;
+              
+              jsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
+              const parsedNovel = JSON.parse(jsonText);
+              
+              setNovelLibrary(prev => [parsedNovel, ...prev]);
+              setRawText("");
+              loadNovel(parsedNovel);
+
+            } catch (err) {
+              console.error(err);
+              showError("텍스트 변환 실패: 텍스트가 너무 길거나 API 응답 구조 오류입니다.");
+            } finally {
+              setIsGenerating(false);
+            }
+          };
+
+          const showError = (msg) => {
+            setErrorMsg(msg);
+            setTimeout(() => setErrorMsg(""), 4000);
+          };
+
           const loadNovel = (novel) => {
             setCurrentNovel(novel);
             const initialUnlocks = {};
@@ -233,7 +369,9 @@
           const handleChoice = (choice) => {
             if (choice.impact) {
               const newStats = { ...stats };
-              Object.keys(choice.impact).forEach(k => newStats[k] += choice.impact[k]);
+              Object.keys(choice.impact).forEach(k => {
+                if(newStats[k] !== undefined) newStats[k] += choice.impact[k];
+              });
               setStats(newStats);
             }
             setCurrentSceneId(choice.next);
@@ -258,106 +396,106 @@
             }
           };
 
-          // ==========================================
-          // [VIEW 1] 서재 (Library)
-          // ==========================================
+          const showActionArea = !isTyping && lineIndex === sceneData?.lines.length - 1 && (sceneData?.choices || sceneData?.endStage);
+
           if (appState === 'LIBRARY') {
             return (
-              <div className="fixed inset-0 w-full h-full bg-zinc-950 text-white flex flex-col p-4 md:p-6 overflow-y-auto">
-                <div className="max-w-5xl mx-auto w-full pt-6 md:pt-10 pb-10">
-                  <div className="flex items-center gap-3 mb-6 md:mb-8">
-                    <IconLibrary size={32} className="text-red-500 shrink-0" />
-                    <h1 className="text-2xl md:text-4xl font-black uppercase tracking-widest break-keep">Visual Novel Engine</h1>
+              <div className="fixed inset-0 w-full h-full bg-zinc-950 text-white flex flex-col overflow-y-auto">
+                {errorMsg && (
+                  <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-md shadow-2xl z-50 font-bold animate-fade-in-up">
+                    {errorMsg}
                   </div>
-                  <p className="text-zinc-400 mb-8 text-sm md:text-base break-keep">
-                    이곳은 JSON 데이터를 주입하여 구동하는 유니버설 엔진의 루트입니다. 깃허브 서버에서 소설을 불러오거나 로컬 파일을 업로드하세요.
+                )}
+                <div className="max-w-5xl mx-auto w-full pt-10 px-4 md:px-6 pb-12">
+                  <div className="flex items-center gap-3 mb-6">
+                    <IconLibrary size={32} className="text-red-500 shrink-0" />
+                    <h1 className="text-2xl md:text-4xl font-black uppercase tracking-widest break-keep">AI Novel Engine</h1>
+                  </div>
+                  <p className="text-zinc-400 mb-10 text-sm md:text-base break-keep">
+                    원문 텍스트를 붙여넣으면, AI가 여러 개의 씬으로 분할하고 매 씬마다 2개의 선택지를 창작하여 게임을 만들어줍니다.
                   </p>
                   
-                  {/* 데이터 로드 컨트롤 패널 */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
-                    <button 
-                      onClick={loadJsonFromUrl}
-                      className="p-6 bg-red-900/20 border-2 border-red-900 hover:border-red-500 rounded-xl transition-colors flex flex-col items-center justify-center text-center group"
-                    >
-                      <IconDownload size={32} className="text-red-500 mb-3 group-hover:scale-110 transition-transform" />
-                      <h3 className="text-lg md:text-xl font-bold mb-1 text-white">서버에서 novel.json 불러오기</h3>
-                      <p className="text-xs text-red-300/70">깃허브 루트 경로의 데이터를 로드합니다.</p>
-                    </button>
-
-                    <div className="relative p-6 border-2 border-dashed border-zinc-700 hover:border-zinc-500 rounded-xl bg-black/50 transition-colors flex flex-col items-center justify-center text-center cursor-pointer group">
-                      <input type="file" accept=".json" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                      <IconUploadCloud size={32} className="text-zinc-500 mb-3 group-hover:scale-110 transition-transform" />
-                      <h3 className="text-lg md:text-xl font-bold mb-1 text-white">로컬 JSON 파일 업로드</h3>
-                      <p className="text-xs text-zinc-500">PC/모바일 기기의 파일을 직접 로드합니다.</p>
+                  <div className="mb-10 bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden shadow-2xl flex flex-col">
+                    <div className="bg-zinc-800 p-4 border-b border-zinc-700 flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex items-center gap-2 font-bold text-red-400">
+                        <IconCpu size={20} /> AI 다중 분기 스크립트 변환기
+                      </div>
+                      
+                      <div className="relative overflow-hidden cursor-pointer group flex items-center gap-2 text-xs md:text-sm text-zinc-300 hover:text-white bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded-md transition-colors shadow-lg">
+                        <input type="file" accept=".json,.txt,.docx,.pdf" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                        <IconUploadCloud size={16} /> 문서 가져오기 (TXT, DOCX, PDF)
+                      </div>
+                    </div>
+                    <div className="p-4 md:p-6">
+                      <textarea 
+                        value={rawText}
+                        onChange={(e) => setRawText(e.target.value)}
+                        placeholder="이곳에 소설 내용을 붙여넣거나 우측 상단의 [문서 가져오기] 버튼으로 텍스트 파일(txt, docx, pdf)을 업로드하세요. AI가 흐름에 맞게 씬을 나누고 계속해서 선택지를 만들어냅니다."
+                        className="w-full h-[200px] md:h-[250px] bg-black/50 border border-zinc-700 rounded-lg p-4 text-zinc-300 text-sm md:text-base focus:outline-none focus:border-red-500 custom-scrollbar resize-none mb-4"
+                        disabled={isGenerating}
+                      />
+                      <button 
+                        onClick={handleAIGeneration}
+                        disabled={isGenerating}
+                        className={`w-full py-4 font-black text-lg md:text-xl tracking-widest uppercase transition-all rounded-md flex items-center justify-center gap-3
+                          ${isGenerating ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed' : 'bg-red-700 hover:bg-red-600 text-white shadow-lg'}`}
+                      >
+                        {isGenerating ? (
+                          <><IconCpu size={24} className="animate-spin-slow" /> 처리 중입니다...</>
+                        ) : (
+                          <><IconPlay size={24} /> 다중 선택지 게임으로 변환</>
+                        )}
+                      </button>
                     </div>
                   </div>
 
-                  {/* 로드된 소설 목록 */}
-                  <h3 className="text-xl font-black uppercase tracking-widest mb-4 border-b border-zinc-800 pb-2">Loaded Novels</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                    {novelLibrary.map((novel, idx) => (
-                      <div 
-                        key={idx} 
-                        onClick={() => loadNovel(novel)}
-                        className="group relative h-[250px] md:h-[300px] rounded-xl overflow-hidden cursor-pointer shadow-2xl border border-white/10 hover:border-red-500 transition-all"
-                      >
-                        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url(${novel.meta.coverBg})`, filter: 'brightness(0.4)' }} />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
-                        <div className="absolute bottom-0 left-0 p-5 w-full">
-                          <span className="bg-red-700 text-white px-2 py-1 font-black text-[10px] uppercase tracking-widest mb-2 inline-block shadow-lg">
-                            POV: {novel.meta.protagonist.name}
-                          </span>
-                          <h2 className="text-xl md:text-2xl font-black mb-1 leading-tight">{novel.meta.title}</h2>
-                          <p className="text-zinc-400 text-xs md:text-sm mb-3 line-clamp-2">{novel.meta.description}</p>
-                          <div className="flex items-center text-red-400 font-bold text-sm group-hover:text-white transition-colors">
-                            <IconPlay size={16} className="mr-1" /> START ENGINE
+                  <h3 className="text-xl font-black uppercase tracking-widest mb-4 border-b border-zinc-800 pb-2">Generated Novels</h3>
+                  {novelLibrary.length === 0 ? (
+                    <div className="text-center py-10 text-zinc-600 font-bold tracking-widest">생성된 게임이 없습니다.</div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                      {novelLibrary.map((novel, idx) => (
+                        <div key={idx} onClick={() => loadNovel(novel)} className="group relative h-[250px] md:h-[300px] rounded-xl overflow-hidden cursor-pointer shadow-xl border border-white/10 hover:border-red-500 transition-all">
+                          <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url(${novel.meta.coverBg})`, filter: 'brightness(0.4)' }} />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+                          <div className="absolute bottom-0 left-0 p-5 w-full">
+                            <span className="bg-red-700 text-white px-2 py-1 font-black text-[10px] uppercase tracking-widest mb-2 inline-block shadow-lg">POV: {novel.meta.protagonist.name}</span>
+                            <h2 className="text-xl md:text-2xl font-black mb-1 leading-tight">{novel.meta.title}</h2>
+                            <div className="flex items-center text-red-400 font-bold text-sm group-hover:text-white transition-colors">
+                              <IconPlay size={16} className="mr-1" /> PLAY
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             );
           }
 
-          // ==========================================
-          // [VIEW 2] 작전 통제실 (HUB)
-          // ==========================================
           if (appState === 'HUB') {
             return (
               <div className="fixed inset-0 w-full h-full bg-black text-white flex flex-col">
                 <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: `url(${currentNovel.meta.coverBg})` }} />
                 <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
-                
                 <div className="relative z-10 p-4 md:p-6 flex items-center justify-between border-b border-white/10">
                   <button onClick={() => setAppState('LIBRARY')} className="flex items-center text-zinc-400 hover:text-white font-bold transition-colors text-sm md:text-base">
-                    <IconRotateCcw size={16} className="mr-2"/> Library
+                    <IconRotateCcw size={16} className="mr-2"/> 돌아가기
                   </button>
                   <div className="text-sm md:text-lg font-black tracking-widest uppercase text-red-500">{currentNovel.meta.title}</div>
                 </div>
-
                 <div className="relative z-10 flex flex-col items-center pt-8 pb-12 px-4 overflow-y-auto flex-1 custom-scrollbar">
                   <h2 className="text-2xl md:text-4xl font-black text-white mb-2 tracking-[0.2em] uppercase text-center">Stage Selection</h2>
-                  <p className="text-zinc-400 mb-8 text-xs md:text-sm text-center break-keep">{currentNovel.meta.description}</p>
-                  
                   <div className="flex flex-col gap-3 md:gap-4 w-full max-w-2xl pb-10">
                     {currentNovel.stages.map((st) => (
-                      <button
-                        key={st.id}
-                        disabled={!unlockedStages[st.id]}
-                        onClick={() => startStage(st.id)}
-                        className={`p-4 md:p-6 border-l-4 bg-zinc-900/80 transition-all text-left flex items-center justify-between group rounded-sm
-                          ${unlockedStages[st.id] ? `border-${st.color.replace('text-', '')} hover:bg-zinc-800 active:scale-[0.98] shadow-lg` : 'border-zinc-800 opacity-40 cursor-not-allowed'}`}
-                      >
+                      <button key={st.id} disabled={!unlockedStages[st.id]} onClick={() => startStage(st.id)} className={`p-4 md:p-6 border-l-4 bg-zinc-900/80 transition-all text-left flex items-center justify-between group rounded-sm ${unlockedStages[st.id] ? `border-${st.color.replace('text-', '')} hover:bg-zinc-800 active:scale-[0.98] shadow-lg` : 'border-zinc-800 opacity-40 cursor-not-allowed'}`}>
                         <div className="flex items-center gap-3 md:gap-4">
                           <div className={`p-2 md:p-3 bg-black rounded-full shrink-0 ${unlockedStages[st.id] ? st.color : 'text-zinc-600'}`}>
                             {getStageIcon(st.icon)}
                           </div>
                           <div>
-                            <span className="text-[10px] md:text-xs text-zinc-400 font-bold tracking-widest uppercase mb-1 block">
-                              {st.charName} ({st.role})
-                            </span>
+                            <span className="text-[10px] md:text-xs text-zinc-400 font-bold tracking-widest uppercase mb-1 block">{st.charName} ({st.role})</span>
                             <span className="text-base md:text-2xl font-black text-white">{st.title}</span>
                           </div>
                         </div>
@@ -370,14 +508,8 @@
             );
           }
 
-          // ==========================================
-          // [VIEW 3] 플레이 뷰 (PLAY)
-          // ==========================================
-          if (!sceneData) return <div className="bg-black text-white h-screen flex items-center justify-center">Loading Data Error</div>;
-
           return (
             <div className="fixed inset-0 w-full flex flex-col bg-black text-white font-sans select-none overflow-hidden">
-              
               <div className="absolute inset-0 pointer-events-none z-0">
                 <div className="absolute inset-0 bg-cover bg-center transition-all duration-700 ease-in-out scale-105" style={{ backgroundImage: `url(${sceneData.bg})`, filter: 'brightness(0.35) contrast(1.1)' }} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
@@ -388,7 +520,6 @@
                   <span className="text-[8px] md:text-[10px] text-red-500 font-black tracking-widest block mb-0.5">{currentNovel.meta.protagonist.pov}</span>
                   <span className="text-sm md:text-xl font-serif font-bold italic">{currentNovel.meta.protagonist.name}</span>
                 </div>
-                
                 <div className="flex gap-1 md:gap-2 flex-wrap justify-end">
                   {currentNovel.meta.statsConfig.map((sc, i) => (
                     <div key={i} className={`bg-zinc-950/90 backdrop-blur-md px-2 py-2 md:px-4 md:py-3 border-b-2 border-${sc.color}-600 text-center min-w-[50px] md:min-w-[80px] shadow-lg`}>
@@ -399,9 +530,9 @@
                 </div>
               </div>
 
-              <div className="relative z-10 flex-1 min-h-0 flex justify-center items-end pointer-events-none px-4 pb-2">
+              <div className="relative z-10 flex-1 min-h-0 flex justify-center items-end pointer-events-none px-4">
                 {sceneData.character && (
-                  <div className="relative animate-fade-in-up w-full max-w-[220px] md:max-w-[320px] aspect-[2/3] max-h-[50vh]">
+                  <div className="relative animate-fade-in-up w-full max-w-[220px] md:max-w-[320px] aspect-[2/3] max-h-full">
                     <div className={`absolute inset-0 bg-gradient-to-t ${sceneData.character.color} to-transparent opacity-30 rounded-t-full blur-xl`} />
                     <div className="absolute inset-0 bg-white/5 border-x border-t border-white/20 rounded-t-full backdrop-blur-[2px] flex flex-col items-center pt-8 md:pt-16">
                       <span className="text-white/20 text-3xl md:text-5xl font-black tracking-tighter">TARGET</span>
@@ -413,42 +544,40 @@
                 )}
               </div>
 
-              <div className="relative z-40 w-full shrink-0 px-2 pb-4 md:px-6 md:pb-8 pt-2 pointer-events-auto">
-                <div className="max-w-4xl mx-auto flex flex-col w-full">
-                  
-                  {sceneData.lines && sceneData.lines[lineIndex] && (
-                    <div className="self-start bg-red-700 text-white px-4 py-1 md:px-5 md:py-1.5 font-black text-sm md:text-lg skew-x-[-10deg] border-r-4 border-white shadow-lg z-10 ml-2 mb-[-2px]">
-                      <span className="skew-x-[10deg] block tracking-wide">{sceneData.lines[lineIndex].speaker}</span>
-                    </div>
-                  )}
-
-                  <div onClick={handleBoxClick} className="bg-zinc-950/95 border-2 border-white/20 p-4 md:p-8 shadow-2xl relative flex flex-col min-h-[140px] md:min-h-[180px] cursor-pointer rounded-sm">
-                    <div className="absolute top-0 right-0 w-12 h-12 bg-red-600/10 rounded-bl-full pointer-events-none" />
-                    
-                    <div ref={scrollRef} className="text-[15px] md:text-xl font-medium leading-[1.7] md:leading-[1.9] text-zinc-100 flex-grow break-keep mb-2 overflow-y-auto custom-scrollbar pr-2" style={{ maxHeight: '25vh' }}>
-                      {displayedText}
-                    </div>
-
-                    {!isTyping && (!sceneData.choices && !sceneData.endStage && lineIndex < sceneData.lines.length - 1) && (
-                      <div className="self-end mt-auto animate-bounce"><IconChevronRight size={20} className="text-red-500" /></div>
-                    )}
-                  </div>
-
-                  {!isTyping && sceneData.choices && lineIndex === sceneData.lines.length - 1 && (
-                    <div className="flex flex-col gap-2 mt-2 md:mt-3 animate-fade-in-up">
+              <div className="relative z-40 w-full shrink-0 px-2 pb-4 md:px-6 md:pb-8 pt-2 pointer-events-auto h-[340px] md:h-[380px] flex flex-col justify-end max-w-4xl mx-auto">
+                <div className="h-[120px] w-full flex flex-col justify-end gap-2 mb-3">
+                  {showActionArea && sceneData.choices && (
+                    <div className="flex flex-col gap-2 animate-fade-in-up w-full">
                       {sceneData.choices.map((c, i) => (
                         <button key={i} onClick={(e) => { e.stopPropagation(); handleChoice(c); }} className="w-full p-3 md:p-4 bg-zinc-900/95 border border-white/20 hover:border-red-500 active:bg-red-900/40 transition-colors text-left flex items-center justify-between shadow-lg rounded-sm group">
-                          <span className="text-zinc-200 font-bold text-xs md:text-base leading-snug break-keep pr-2 group-hover:text-white transition-colors">{c.text}</span>
+                          <span className="text-zinc-200 font-bold text-sm md:text-base leading-snug break-keep pr-2 group-hover:text-white transition-colors">{c.text}</span>
                           <IconChevronRight size={18} className="text-red-500 shrink-0 group-hover:translate-x-1 transition-transform" />
                         </button>
                       ))}
                     </div>
                   )}
-
-                  {!isTyping && sceneData.endStage && lineIndex === sceneData.lines.length - 1 && (
-                     <button onClick={handleStageEnd} className="w-full mt-2 md:mt-3 p-3 md:p-4 bg-red-700 hover:bg-red-600 font-black text-center uppercase tracking-widest transition-colors shadow-lg rounded-sm text-sm md:text-base">
+                  {showActionArea && sceneData.endStage && (
+                     <button onClick={handleStageEnd} className="w-full p-3 md:p-4 bg-red-700 hover:bg-red-600 font-black text-center uppercase tracking-widest transition-colors shadow-lg rounded-sm text-sm md:text-base animate-fade-in-up">
                        Return to Hub
                      </button>
+                  )}
+                </div>
+
+                <div className="h-[32px] md:h-[36px] mb-[-4px] z-10 w-full pl-2 md:pl-0">
+                  {sceneData.lines && sceneData.lines[lineIndex] && (
+                    <div className="inline-block bg-red-700 text-white px-4 py-1 md:px-5 md:py-1.5 font-black text-sm md:text-lg skew-x-[-10deg] border-r-4 border-white shadow-lg">
+                      <span className="skew-x-[10deg] block tracking-wide">{sceneData.lines[lineIndex].speaker}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div onClick={handleBoxClick} className="bg-zinc-950/95 border-2 border-white/20 p-4 md:p-8 shadow-2xl relative flex flex-col h-[150px] md:h-[180px] w-full shrink-0 cursor-pointer rounded-sm">
+                  <div className="absolute top-0 right-0 w-12 h-12 bg-red-600/10 rounded-bl-full pointer-events-none" />
+                  <div ref={scrollRef} className="text-[15px] md:text-xl font-medium leading-[1.7] md:leading-[1.9] text-zinc-100 flex-grow break-keep mb-2 overflow-y-auto custom-scrollbar pr-2">
+                    {displayedText}
+                  </div>
+                  {!isTyping && (!sceneData.choices && !sceneData.endStage && lineIndex < sceneData.lines.length - 1) && (
+                    <div className="absolute bottom-4 right-4 animate-bounce"><IconChevronRight size={20} className="text-red-500" /></div>
                   )}
                 </div>
               </div>
@@ -461,5 +590,7 @@
     </script>
 </body>
 </html>
+
+
 
 ```
