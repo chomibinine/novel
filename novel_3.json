@@ -1,5 +1,5 @@
 {
-  "id": "office_training_vol3",
+  "id": "office_training_vol3_fixed",
   "meta": {
     "title": "사내 교육의 정석 - Part 3",
     "author": "Master",
@@ -43,8 +43,33 @@
           { "speaker": "정나예", "text": "가, 가요... 저, 갈 것 같아요...! 부장님...!" }
         ],
         "choices": [
-          { "text": "[정점] 그녀를 첫 번째 절정으로 인도한다.", "next": "first_climax", "impact": { "desire": 20, "corruption": 10 } }
+          { "text": "[정점] 거칠게 밀어붙여 그녀를 첫 번째 절정으로 인도한다.", "next": "first_climax", "impact": { "desire": 20, "corruption": 10 } },
+          { "text": "[지연] 갑자기 움직임을 멈추고 그녀를 애타게 만든다.", "next": "lower_body_delay", "impact": { "empire": 15 } }
         ]
+      },
+      "lower_body_delay": {
+        "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
+        "character": { "name": "정나예", "role": "신입사원", "color": "from-red-600" },
+        "lines": [
+          { "speaker": "강진혁", "text": "나는 갑자기 손길을 멈췄다. 허공에 뜬 나예의 몸이 미세하게 떨리고 있었다." },
+          { "speaker": "정나예", "text": "하아... 부장님, 왜... 왜 멈추세요..." },
+          { "speaker": "강진혁", "text": "벌써 만족하면 재미가 없잖아. 스스로 애원할 때까지 기다려봐." },
+          { "speaker": "강진혁", "text": "애타는 눈빛으로 나를 바라보던 나예는 수치심을 억누르며 내 손을 강하게 끌어당겼다." }
+        ],
+        "choices": [
+          { "text": "[진행] 그녀의 절실한 애원을 받아들인다.", "next": "first_climax", "impact": { "desire": 10, "corruption": 15 } },
+          { "text": "[거절] 그대로 밀어내고 이성을 되찾는다.", "next": "bad_end_1", "impact": { "empire": -10 } }
+        ]
+      },
+      "bad_end_1": {
+        "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
+        "character": { "name": "정나예", "role": "신입사원", "color": "from-red-600" },
+        "lines": [
+          { "speaker": "강진혁", "text": "아니, 오늘은 여기까지 하지. 선을 너무 많이 넘었어." },
+          { "speaker": "강진혁", "text": "나는 옷매무새를 다듬으며 차갑게 물러났다. 나예는 멍한 표정으로 헐떡이다가 이내 수치심에 얼굴을 붉히고 옷을 여몄다." },
+          { "speaker": "시스템", "text": "[Game Over] 너무 강한 밀어내기는 사냥감을 놓치게 만듭니다. 허무하게 종료됩니다." }
+        ],
+        "endStage": true
       },
       "first_climax": {
         "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
@@ -58,7 +83,22 @@
           { "speaker": "강진혁", "text": "나예는 망설임 없이 손을 뻗어 나의 마지막 남은 구속을 풀어냈다. 어둠 속에서도 위압적인 자태를 드러낸 나의 상징에 나예는 잠시 숨을 삼켰다." }
         ],
         "choices": [
-          { "text": "[허락] 그녀의 도발적인 봉사를 받아들인다.", "next": "service", "impact": { "desire": 25, "empire": 15 } }
+          { "text": "[허락] 그녀의 도발적인 입술을 얌전히 받아들인다.", "next": "service", "impact": { "desire": 25, "empire": 15 } },
+          { "text": "[명령] 거만하게 내려다보며 똑바로 봉사하라고 지시한다.", "next": "service_command", "impact": { "corruption": 20, "empire": 20 } }
+        ]
+      },
+      "service_command": {
+        "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
+        "character": { "name": "정나예", "role": "신입사원", "color": "from-red-600" },
+        "lines": [
+          { "speaker": "강진혁", "text": "뭘 머뭇거립니까. 똑바로 하세요." },
+          { "speaker": "강진혁", "text": "나의 차가운 명령에 나예는 흠칫 놀랐지만, 이내 눈빛을 번뜩이며 도발적으로 입술을 열었다." },
+          { "speaker": "정나예", "text": "네, 부장님... 아주 제대로 모실게요." },
+          { "speaker": "강진혁", "text": "그녀는 더욱 헌신적이고 노골적인 자세로 나를 집어삼키기 시작했다." }
+        ],
+        "choices": [
+          { "text": "[계속] 그녀의 노련한 입술에 몸을 맡긴다.", "next": "service", "impact": { "corruption": 10 } },
+          { "text": "[반전] 더 이상 참지 못하고 그녀를 시트 위로 눕힌다.", "next": "union", "impact": { "desire": 15 } }
         ]
       },
       "service": {
@@ -73,8 +113,20 @@
           { "speaker": "강진혁", "text": "더는 못 참습니다. 각오해요." }
         ],
         "choices": [
-          { "text": "[결합] 서로의 심연 속으로 파고든다.", "next": "union", "impact": { "desire": 30, "corruption": 20 } }
+          { "text": "[결합] 그녀의 좁은 심연 속으로 거칠게 파고든다.", "next": "union", "impact": { "desire": 30, "corruption": 20 } },
+          { "text": "[도망] 불현듯 떠오른 딸의 얼굴에 차 밖으로 뛰쳐나간다.", "next": "bad_end_2", "impact": { "empire": -20 } }
         ]
+      },
+      "bad_end_2": {
+        "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
+        "character": { "name": "정나예", "role": "신입사원", "color": "from-red-600" },
+        "lines": [
+          { "speaker": "강진혁", "text": "아니야... 이건 미친 짓이야! 집에 혼자 있을 서윤이가...!" },
+          { "speaker": "강진혁", "text": "나는 쾌락 직전 불현듯 떠오른 죄책감에 기겁하며 차 문을 열고 폭우 속으로 뛰쳐나갔다." },
+          { "speaker": "정나예", "text": "부, 부장님...! 어딜 가시는 거예요!" },
+          { "speaker": "시스템", "text": "[Game Over] 치명적인 유혹 앞에서 아빠로서의 이성이 작동했습니다. 은밀한 제국은 건설되지 못했습니다." }
+        ],
+        "endStage": true
       },
       "union": {
         "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
@@ -88,7 +140,7 @@
           { "speaker": "정나예", "text": "아, 앙! 하아, 진혁 씨! 더, 더 깊이... 아!" },
           { "speaker": "강진혁", "text": "나는 이제 신입 사원을 가르치는 부장이 아니었다. 나예의 골반을 꽉 붙잡아 고정시킨 채, 마지막 한 방울의 갈증까지 털어내려는 듯 맹렬하게 허리를 쳤다." },
           { "speaker": "강진혁", "text": "차 안의 두 사람은 이미 서로의 가장 깊은 곳에서 터져 나오는 뜨거운 용암에 휩쓸려 있었다. 이성은 타버린 지 오래였고, 남은 것은 오직 지독할 정도의 쾌락뿐이었다." },
-          { "speaker": "시스템", "text": "[Stage 1-3] 클리어. 폭우 속 SUV에서의 교육이 종료되었습니다. 나예의 태도가 '복종'으로 변화합니다." }
+          { "speaker": "시스템", "text": "[Stage 1-3] 클리어. 폭우 속 SUV에서의 치명적인 교육이 종료되었습니다. 나예의 태도가 '복종'으로 변화합니다." }
         ],
         "endStage": true
       }
