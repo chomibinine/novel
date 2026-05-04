@@ -6,33 +6,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AI Visual Novel Engine</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- React & ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    
-    <!-- Babel -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
-    <!-- 파일 파싱 라이브러리 추가 (DOCX, PDF) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     
     <style>
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
-        
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .animate-spin-slow { animation: spin 2s linear infinite; }
 
         body { 
-          margin: 0; 
-          background: #000; 
-          font-family: 'Pretendard', -apple-system, sans-serif; 
-          overscroll-behavior: none; 
-          -webkit-touch-callout: none;
+          margin: 0; background: #000; font-family: 'Pretendard', -apple-system, sans-serif; 
+          overscroll-behavior: none; -webkit-touch-callout: none;
         }
         
         .custom-scrollbar::-webkit-scrollbar { width: 5px; }
@@ -50,7 +40,7 @@
         const apiKey = ""; 
 
         // ==========================================
-        // [SVG 아이콘 컴포넌트]
+        // [SVG 아이콘]
         // ==========================================
         const IconChevronRight = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>;
         const IconShieldAlert = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
@@ -65,6 +55,7 @@
         const IconCpu = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>;
         const IconUploadCloud = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/><polyline points="16 16 12 12 8 16"/></svg>;
         const IconLock = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
+        const IconScissors = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>;
 
         async function fetchWithRetry(url, options, retries = 5) {
           const delays = [1000, 2000, 4000, 8000, 16000];
@@ -83,62 +74,28 @@
         window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
         // --------------------------------------------------------
-        // [초기 구동 샘플 데이터]
+        // [스마트 분할 함수] 최대 5500자를 기준으로 문단이 끊기지 않게 쪼갬
         // --------------------------------------------------------
-        const SAMPLE_NOVEL = {
-          id: "tutorial_novel",
-          meta: {
-            title: "엔진 작동 튜토리얼",
-            author: "System",
-            coverBg: "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
-            description: "텍스트나 문서를 업로드하여 게임으로 만드는 엔진입니다. 이 튜토리얼을 통해 정주행 시스템을 확인해보세요.",
-            protagonist: { name: "테스터", role: "유저", pov: "System Access" },
-            statsConfig: [
-              { key: "desire", label: "Desire", color: "red" },
-              { key: "corruption", label: "Corrupt", color: "purple" }
-            ]
-          },
-          stages: [
-            { id: "tut_1", title: "[1화] 엔진 작동 확인", charName: "가이드", role: "시스템", color: "from-blue-600", isUnlocked: true, firstScene: "intro" },
-            { id: "tut_2", title: "[2화] 정주행 시스템 체험", charName: "가이드", role: "시스템", color: "from-purple-600", isUnlocked: true, firstScene: "intro2" }
-          ],
-          scenes: {
-            "tut_1": {
-              "intro": {
-                "bg": "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
-                "character": { "name": "가이드", "role": "시스템", "color": "from-blue-600" },
-                "lines": [
-                  { "speaker": "시스템", "text": "환영합니다! 유니버설 비주얼 노벨 엔진이 정상적으로 로드되었습니다." },
-                  { "speaker": "시스템", "text": "에피소드가 누적되면, 1화가 끝난 뒤 허브로 튕기지 않고 바로 [다음 에피소드 계속하기] 버튼이 나타납니다." }
-                ],
-                "choices": [
-                  { "text": "[확인] 1화를 마칩니다.", "next": "end", "impact": { "desire": 10 } }
-                ]
-              },
-              "end": {
-                "bg": "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
-                "lines": [
-                  { "speaker": "시스템", "text": "아래의 [다음 에피소드 계속하기] 버튼을 눌러보세요!" }
-                ],
-                "endStage": true
-              }
-            },
-            "tut_2": {
-              "intro2": {
-                "bg": "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
-                "character": { "name": "가이드", "role": "시스템", "color": "from-purple-600" },
-                "lines": [
-                  { "speaker": "시스템", "text": "성공적으로 2화로 넘어왔습니다! 이렇게 여러 개의 소설을 누적시켜 몰입감 넘치는 장편 게임을 만들 수 있습니다." }
-                ],
-                "endStage": true
-              }
+        const chunkText = (text, maxLength = 5500) => {
+          const paragraphs = text.split('\n');
+          const chunks = [];
+          let currentChunk = "";
+          
+          for(let p of paragraphs) {
+            if(currentChunk.length + p.length > maxLength) {
+              if(currentChunk.trim()) chunks.push(currentChunk.trim());
+              currentChunk = p + '\n';
+            } else {
+              currentChunk += p + '\n';
             }
           }
+          if(currentChunk.trim()) chunks.push(currentChunk.trim());
+          return chunks;
         };
 
         const App = () => {
           const [appState, setAppState] = useState('LIBRARY');
-          const [novelLibrary, setNovelLibrary] = useState([SAMPLE_NOVEL]);
+          const [novelLibrary, setNovelLibrary] = useState([]);
           
           const [currentNovel, setCurrentNovel] = useState(null);
           const [unlockedStages, setUnlockedStages] = useState({});
@@ -154,13 +111,30 @@
           const [isGenerating, setIsGenerating] = useState(false);
           const [errorMsg, setErrorMsg] = useState("");
           
+          // [추가] 자동 분할 상태 관리
+          const [textChunks, setTextChunks] = useState([]);
+          const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
           const [appendTargetId, setAppendTargetId] = useState("NEW");
 
           const scrollRef = useRef(null);
 
           // --------------------------------------------------------
-          // 파일 업로드 (txt, docx, pdf, json) 파싱 로직
+          // 1. 파일 업로드 및 자동 분할 로직
           // --------------------------------------------------------
+          const processLoadedText = (fullText) => {
+            const chunks = chunkText(fullText, 5500);
+            if(chunks.length > 1) {
+              setTextChunks(chunks);
+              setCurrentChunkIndex(0);
+              setRawText(chunks[0]);
+              alert(`문서가 너무 길어 AI가 가장 쾌적하게 소화할 수 있는 ${chunks.length}개의 파트로 자동 분할되었습니다!`);
+            } else {
+              setTextChunks([]);
+              setCurrentChunkIndex(0);
+              setRawText(fullText);
+            }
+          };
+
           const handleFileUpload = (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -186,7 +160,7 @@
             } else if (ext === 'txt') {
               const reader = new FileReader();
               reader.onload = (e) => {
-                setRawText(e.target.result);
+                processLoadedText(e.target.result);
                 setIsGenerating(false);
               };
               reader.readAsText(file);
@@ -195,10 +169,9 @@
               reader.onload = async (e) => {
                 try {
                   const result = await mammoth.extractRawText({arrayBuffer: e.target.result});
-                  setRawText(result.value);
+                  processLoadedText(result.value);
                 } catch(err) {
                   showError("DOCX 추출에 실패했습니다.");
-                  console.error(err);
                 } finally {
                   setIsGenerating(false);
                 }
@@ -217,25 +190,32 @@
                     const pageText = textContent.items.map(item => item.str).join(' ');
                     text += pageText + "\n";
                   }
-                  setRawText(text);
+                  processLoadedText(text);
                 } catch(err) {
                   showError("PDF 추출에 실패했습니다.");
-                  console.error(err);
                 } finally {
                   setIsGenerating(false);
                 }
               };
               reader.readAsArrayBuffer(file);
-            } else {
-              showError("지원하지 않는 파일 형식입니다 (.txt, .docx, .pdf, .json 지원)");
-              setIsGenerating(false);
             }
-            
             event.target.value = null;
           };
 
+          const handleManualSplit = () => {
+            const chunks = chunkText(rawText, 5500);
+            if(chunks.length > 1) {
+              setTextChunks(chunks);
+              setCurrentChunkIndex(0);
+              setRawText(chunks[0]);
+              alert(`텍스트가 성공적으로 ${chunks.length}개의 파트로 분할되었습니다.`);
+            } else {
+              alert("분할할 만큼 텍스트가 길지 않습니다. (현재 1개 파트로 충분함)");
+            }
+          };
+
           // --------------------------------------------------------
-          // 예측 불가 선택지 & 누적 이어쓰기(Append) 로직
+          // 2. AI 변환 및 자동 파트 이동 로직
           // --------------------------------------------------------
           const handleAIGeneration = async () => {
             if (!rawText.trim()) {
@@ -246,55 +226,15 @@
             setIsGenerating(true);
             setErrorMsg("");
 
-            const systemInstruction = `당신은 비주얼 노벨 게임 엔진의 텍스트 파서입니다. 사용자가 입력한 소설 원문을 단 한 글자도 생략하지 말고 100% 그대로 JSON 배열로 이식하세요.
+            const systemInstruction = `당신은 비주얼 노벨 게임 엔진의 텍스트 파서입니다. 사용자가 입력한 소설 원문을 100% 그대로 JSON 배열로 이식하세요.
 
 [절대 규칙]
-1. 입력된 텍스트의 흐름에 따라 3~5개의 연속된 씬(scene1, scene2...)으로 나누어 분배하세요.
+1. 입력된 텍스트의 흐름에 따라 3~5개의 연속된 씬(scene1, scene2...)으로 분배하세요.
 2. 각 씬의 마지막에는 반드시 2개의 선택지(choices)를 창작하세요.
 3. 선택지 중 하나는 '위기'나 '뜻밖의 변수'를 겪는 우회 씬(회복 루트)으로 연결하세요.
-4. 화자가 명확한 대사는 speaker에 이름을 넣고, 지문은 speaker에 주인공 이름을 넣으세요.
-5. 이야기의 진짜 맨 마지막 씬에만 "endStage": true 속성을 넣고, 그곳에는 선택지를 빼세요.
-6. 오직 JSON 구조에 맞추어 JSON 데이터만 출력하세요. 마크다운(\`\`\`json)은 제외하세요.
-
-[JSON 포맷 예시]
-{
-  "id": "novel_auto",
-  "meta": {
-    "title": "자동 생성 스토리",
-    "author": "AI 파서",
-    "coverBg": "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
-    "description": "사용자 입력 원문 무삭제 연속 진행본",
-    "protagonist": { "name": "주인공이름", "role": "주인공역할", "pov": "Player POV" },
-    "statsConfig": [
-      { "key": "desire", "label": "Desire", "color": "red" },
-      { "key": "corruption", "label": "Corrupt", "color": "purple" }
-    ]
-  },
-  "stages": [
-    { "id": "stage_1", "title": "에피소드 제목", "charName": "상대방", "role": "역할", "color": "from-red-600", "isUnlocked": true, "firstScene": "scene1" }
-  ],
-  "scenes": {
-    "stage_1": {
-      "scene1": {
-        "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
-        "character": { "name": "상대방", "role": "역할", "color": "from-red-600" },
-        "lines": [
-          { "speaker": "주인공", "text": "원문 문장..." }
-        ],
-        "choices": [
-          { "text": "[선택1]", "next": "scene2", "impact": { "desire": 10 } },
-          { "text": "[선택2]", "next": "scene1_recovery", "impact": { "corruption": 5 } }
-        ]
-      },
-      "scene1_recovery": { ... },
-      "scene2": { ... },
-      "scene3": {
-        "lines": [ { "speaker": "주인공", "text": "원문 마지막 줄..." } ],
-        "endStage": true
-      }
-    }
-  }
-}`;
+4. 화자가 명확한 대사는 speaker에 이름을 넣고, 지문은 주인공 이름을 넣으세요.
+5. 이야기의 최종 마지막 씬에만 "endStage": true 속성을 넣으세요.
+6. 오직 JSON 데이터만 출력하세요.`;
 
             try {
               const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
@@ -312,21 +252,20 @@
 
               const data = await response.json();
               let jsonText = data.candidates[0].content.parts[0].text;
-              
               jsonText = jsonText.replace(/```json/g, '').replace(/```/g, '').trim();
               const parsedNovel = JSON.parse(jsonText);
               
-              // [핵심 변경] 체감 강화를 위한 누적 로직 (넘버링 적용)
+              let createdNovelId = "";
+
               if (appendTargetId === "NEW") {
                 parsedNovel.id = 'novel_' + Date.now();
-                // 1화 라벨링
+                createdNovelId = parsedNovel.id;
                 let stTitle = parsedNovel.stages[0].title.replace(/\[\d+화\]\s*/g, '');
                 parsedNovel.stages[0].title = `[1화] ${stTitle}`;
                 
                 setNovelLibrary(prev => [parsedNovel, ...prev]);
-                setRawText("");
-                loadNovel(parsedNovel);
               } else {
+                createdNovelId = appendTargetId;
                 setNovelLibrary(prev => {
                   const updatedLibrary = [...prev];
                   const targetIndex = updatedLibrary.findIndex(n => n.id === appendTargetId);
@@ -339,7 +278,6 @@
                     const newStage = { ...parsedNovel.stages[0], id: newStageId };
                     newStage.isUnlocked = true; 
                     
-                    // N화 자동 라벨링
                     let stTitle = newStage.title.replace(/\[\d+화\]\s*/g, '');
                     newStage.title = `[${targetNovel.stages.length + 1}화] ${stTitle}`;
                     
@@ -347,21 +285,38 @@
                     targetNovel.scenes[newStageId] = parsedNovel.scenes[oldStageId];
                     
                     updatedLibrary[targetIndex] = targetNovel;
-                    
-                    setTimeout(() => {
-                      setRawText("");
-                      alert(`[${targetNovel.meta.title}] 작품에 새로운 에피소드(${targetNovel.stages.length}화)가 누적되었습니다!\n이제 이전 화에서 끊김 없이 정주행할 수 있습니다.`);
-                      // 방금 로드된 게임이면 화면 갱신
-                      if (currentNovel && currentNovel.id === targetNovel.id) {
-                        setCurrentNovel(targetNovel);
-                      }
-                    }, 100);
-                    
                     return updatedLibrary;
                   }
                   return prev;
                 });
               }
+
+              // [핵심] 분할된 다음 파트가 있으면 자동으로 세팅해준다!
+              setTimeout(() => {
+                if (textChunks.length > 0 && currentChunkIndex < textChunks.length - 1) {
+                  const nextIdx = currentChunkIndex + 1;
+                  setCurrentChunkIndex(nextIdx);
+                  setRawText(textChunks[nextIdx]);
+                  setAppendTargetId(createdNovelId); // 무조건 방금 작업한 게임에 누적하도록 고정
+                  
+                  alert(`[파트 ${currentChunkIndex + 1}/${textChunks.length}] 변환 성공! 텍스트 창에 다음 파트가 자동으로 로드되었습니다.\n버튼을 눌러 이어서 누적하세요.`);
+                } else {
+                  // 분할 작업 완전 종료
+                  setRawText("");
+                  setTextChunks([]);
+                  setCurrentChunkIndex(0);
+                  
+                  const targetNovelToLoad = novelLibrary.find(n => n.id === createdNovelId) || parsedNovel;
+                  alert(`모든 변환이 완료되었습니다! 생성된 게임(${targetNovelToLoad.stages ? targetNovelToLoad.stages.length : 1}화 누적)을 실행합니다.`);
+                  
+                  // 최근 업데이트된 상태의 라이브러리 데이터를 가져오기 위해 강제 지연 후 로드
+                  setNovelLibrary(currentLib => {
+                    const finalNovel = currentLib.find(n => n.id === createdNovelId) || parsedNovel;
+                    loadNovel(finalNovel);
+                    return currentLib;
+                  });
+                }
+              }, 100);
 
             } catch (err) {
               console.error(err);
@@ -400,7 +355,6 @@
             ? currentNovel.scenes[currentStageId][currentSceneId] 
             : null;
 
-          // 현재 스테이지 인덱스 찾기 (정주행 시스템용)
           const currentStageIndex = currentNovel?.stages.findIndex(s => s.id === currentStageId);
           const hasNextStage = currentNovel && currentStageIndex !== -1 && currentStageIndex < currentNovel.stages.length - 1;
           const nextStage = hasNextStage ? currentNovel.stages[currentStageIndex + 1] : null;
@@ -480,6 +434,9 @@
 
           const showActionArea = !isTyping && sceneData?.lines && lineIndex === sceneData.lines.length - 1 && (sceneData?.choices || sceneData?.endStage);
 
+          // ==========================================
+          // [VIEW 1] 서재 (Library) - 분할 UI 반영
+          // ==========================================
           if (appState === 'LIBRARY') {
             return (
               <div className="fixed inset-0 w-full h-full bg-zinc-950 text-white flex flex-col overflow-y-auto">
@@ -494,27 +451,40 @@
                     <h1 className="text-2xl md:text-4xl font-black uppercase tracking-widest break-keep">AI Novel Engine</h1>
                   </div>
                   <p className="text-zinc-400 mb-10 text-sm md:text-base break-keep">
-                    원문 텍스트를 붙여넣으면, AI가 여러 개의 씬으로 분할하고 매 씬마다 2개의 선택지를 창작하여 게임을 만들어줍니다.
+                    PDF, DOCX, TXT 파일을 업로드하거나 방대한 텍스트를 붙여넣으세요. 엔진이 스스로 분할하여 차곡차곡 게임을 조립합니다.
                   </p>
                   
                   <div className="mb-10 bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden shadow-2xl flex flex-col">
                     <div className="bg-zinc-800 p-4 border-b border-zinc-700 flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-2 font-bold text-red-400">
-                        <IconCpu size={20} /> AI 다중 분기 스크립트 변환기
+                        <IconCpu size={20} /> AI 자동 분할 & 다중 분기 스크립트 변환기
                       </div>
                       
-                      <div className="relative overflow-hidden cursor-pointer group flex items-center gap-2 text-xs md:text-sm text-zinc-300 hover:text-white bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded-md transition-colors shadow-lg">
-                        <input type="file" accept=".json,.txt,.docx,.pdf" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                        <IconUploadCloud size={16} /> 문서 가져오기 (TXT, DOCX, PDF)
+                      <div className="flex gap-2">
+                        <button onClick={handleManualSplit} className="flex items-center gap-1 text-xs md:text-sm text-zinc-300 hover:text-white bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded-md transition-colors shadow-lg">
+                          <IconScissors size={16} /> 텍스트 수동 쪼개기
+                        </button>
+                        <div className="relative overflow-hidden cursor-pointer group flex items-center gap-1 text-xs md:text-sm text-zinc-300 hover:text-white bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded-md transition-colors shadow-lg">
+                          <input type="file" accept=".json,application/json,.txt,text/plain,.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document,.pdf,application/pdf" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                          <IconUploadCloud size={16} /> 문서 가져오기
+                        </div>
                       </div>
                     </div>
                     <div className="p-4 md:p-6">
+                      
+                      {textChunks.length > 1 && (
+                        <div className="mb-4 bg-red-900/30 border border-red-800 text-red-200 p-3 rounded-md text-sm md:text-base font-bold flex items-center justify-between">
+                          <span>[자동 분할 진행 중] 방대한 텍스트를 처리하기 위해 여러 번에 나누어 변환합니다.</span>
+                          <span className="bg-red-700 text-white px-3 py-1 rounded-full">현재 {currentChunkIndex + 1} / {textChunks.length} 파트</span>
+                        </div>
+                      )}
+
                       <textarea 
                         value={rawText}
                         onChange={(e) => setRawText(e.target.value)}
-                        placeholder="이곳에 소설 1화를 붙여넣어 새 게임을 만들고, 2화부터는 아래 옵션에서 '기존 게임에 에피소드 추가'를 선택해 누적시킬 수 있습니다."
+                        placeholder="이곳에 소설 내용을 붙여넣거나 [문서 가져오기]로 PDF를 업로드하세요. 너무 길면 엔진이 스스로 분할하여 차례대로 변환해 줍니다."
                         className="w-full h-[200px] md:h-[250px] bg-black/50 border border-zinc-700 rounded-lg p-4 text-zinc-300 text-sm md:text-base focus:outline-none focus:border-red-500 custom-scrollbar resize-none mb-4"
-                        disabled={isGenerating}
+                        disabled={isGenerating || textChunks.length > 1}
                       />
                       
                       <div className="flex flex-col md:flex-row items-start md:items-center gap-3 mb-4 bg-zinc-800/50 p-3 rounded-md border border-zinc-700/50">
@@ -522,7 +492,8 @@
                         <select 
                           value={appendTargetId} 
                           onChange={(e) => setAppendTargetId(e.target.value)}
-                          className="flex-grow bg-zinc-900 border border-zinc-600 text-white text-sm rounded-md p-2 outline-none focus:border-red-500 cursor-pointer"
+                          disabled={textChunks.length > 1 && currentChunkIndex > 0} // 분할 중엔 타겟 변경 불가
+                          className="flex-grow bg-zinc-900 border border-zinc-600 text-white text-sm rounded-md p-2 outline-none focus:border-red-500 cursor-pointer disabled:opacity-50"
                         >
                           <option value="NEW">✨ 새로운 게임으로 생성 (1화)</option>
                           {novelLibrary.map(n => (
@@ -538,9 +509,9 @@
                           ${isGenerating ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed' : 'bg-red-700 hover:bg-red-600 text-white shadow-lg'}`}
                       >
                         {isGenerating ? (
-                          <><IconCpu size={24} className="animate-spin-slow" /> 씬 분할 및 선택지 생성 중...</>
+                          <><IconCpu size={24} className="animate-spin-slow" /> 파싱 및 생성 중...</>
                         ) : (
-                          <><IconPlay size={24} /> 텍스트를 게임으로 변환하기</>
+                          <><IconPlay size={24} /> {textChunks.length > 1 ? `[파트 ${currentChunkIndex + 1}/${textChunks.length}] 변환 및 다음 넘어가기` : `텍스트를 게임으로 변환하기`}</>
                         )}
                       </button>
                     </div>
@@ -667,7 +638,7 @@
                          </div>
                       )}
                       <button onClick={handleStageEnd} className="w-full p-3 md:p-4 bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 font-black text-center uppercase tracking-widest transition-colors shadow-lg rounded-sm text-sm md:text-base text-zinc-300">
-                        허브로 돌아가기 (Return to Hub)
+                        허브로 돌아가기
                       </button>
                     </div>
                   )}
@@ -700,6 +671,7 @@
     </script>
 </body>
 </html>
+
 
 
 ```
