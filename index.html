@@ -1,0 +1,465 @@
+```html
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Visual Novel Engine</title>
+    
+    <!-- Tailwind CSS (스타일링) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM (코어) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel (브라우저에서 JSX 컴파일) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+        
+        body { 
+          margin: 0; 
+          background: #000; 
+          font-family: 'Pretendard', -apple-system, sans-serif; 
+          overscroll-behavior: none; 
+          -webkit-touch-callout: none;
+        }
+        
+        /* 모바일 터치 스크롤 최적화 스크롤바 */
+        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #18181b; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #dc2626; border-radius: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #b91c1c; }
+    </style>
+</head>
+<body>
+    <!-- React 앱이 렌더링 될 루트 -->
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // ==========================================
+        // [SVG 아이콘 컴포넌트] 외부 라이브러리 없이 자체 구현
+        // ==========================================
+        const IconChevronRight = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>;
+        const IconShieldAlert = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+        const IconRotateCcw = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg>;
+        const IconBriefcase = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>;
+        const IconUser = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+        const IconBookOpen = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
+        const IconFlame = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>;
+        const IconDroplets = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7 2.9 7 2.9s-2.29 6.16-2.29 6.16c-1.14.93-1.71 2.03-1.71 3.19C3 14.47 4.8 16.3 7 16.3z"/><path d="M20.5 10.4c1.14.93 1.71 2.03 1.71 3.19 0 2.22-1.8 4.05-4 4.05s-4-1.83-4-4.05c0-1.16.57-2.26 1.71-3.19.01 0 2.29-6.16 2.29-6.16s2.28 6.16 2.29 6.16z"/></svg>;
+        const IconLibrary = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>;
+        const IconPlay = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
+        const IconUploadCloud = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/><polyline points="16 16 12 12 8 16"/></svg>;
+        const IconLock = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
+        const IconUnlock = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></svg>;
+        const IconDownload = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
+
+        // ==========================================
+        // 샘플(튜토리얼) 소설 데이터
+        // ==========================================
+        const SAMPLE_NOVEL = {
+          id: "sample_engine",
+          meta: {
+            title: "엔진 튜토리얼 데이터",
+            author: "System",
+            coverBg: "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
+            description: "외부 소설 데이터를 불러오기 전에 엔진이 정상 작동하는지 확인하는 샘플입니다.",
+            protagonist: { name: "테스터", role: "마스터", pov: "System Access" },
+            statsConfig: [
+              { key: "desire", label: "Desire", color: "red" },
+              { key: "corruption", label: "Corrupt", color: "purple" }
+            ]
+          },
+          stages: [
+            { id: 'tut_1', title: '튜토리얼 스테이지', charName: '시스템 가이드', role: '안내자', color: 'from-blue-600', isUnlocked: true, firstScene: 'intro' }
+          ],
+          scenes: {
+            "tut_1": {
+              intro: {
+                bg: "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
+                character: { name: "안내자", role: "가이드", color: "from-blue-600" },
+                lines: [
+                  { speaker: "시스템", text: "엔진이 정상적으로 로드되었습니다!" },
+                  { speaker: "시스템", text: "이곳은 외부 JSON 데이터를 읽어들여 소설을 출력하는 '유니버설 비주얼 노벨 엔진'입니다." },
+                  { speaker: "시스템", text: "이제 깃허브에 이 파일(index.html)과 함께 'novel.json'을 올려주시면 진짜 게임이 시작됩니다." }
+                ],
+                choices: [
+                  { text: "[확인] 엔진 작동을 완료합니다.", next: "end", impact: { desire: 10, corruption: 10 } }
+                ]
+              },
+              end: {
+                bg: "https://images.unsplash.com/photo-1557683316-973673baf926?q=80",
+                lines: [
+                  { speaker: "시스템", text: "테스트가 완료되었습니다. Library 화면에서 새로운 데이터를 로드해보세요." }
+                ],
+                endStage: true
+              }
+            }
+          }
+        };
+
+        // ==========================================
+        // [유니버설 렌더링 엔진 코어]
+        // ==========================================
+        const App = () => {
+          const [appState, setAppState] = useState('LIBRARY');
+          const [novelLibrary, setNovelLibrary] = useState([SAMPLE_NOVEL]);
+          
+          const [currentNovel, setCurrentNovel] = useState(null);
+          const [unlockedStages, setUnlockedStages] = useState({});
+          const [stats, setStats] = useState({});
+          
+          const [currentStageId, setCurrentStageId] = useState(null);
+          const [currentSceneId, setCurrentSceneId] = useState(null);
+          const [lineIndex, setLineIndex] = useState(0);
+          const [displayedText, setDisplayedText] = useState("");
+          const [isTyping, setIsTyping] = useState(false);
+          
+          const scrollRef = useRef(null);
+
+          // --------------------------------------------------------
+          // 파일 업로드 및 Fetch (깃허브 연동)
+          // --------------------------------------------------------
+          const loadJsonFromUrl = async () => {
+            try {
+              const response = await fetch('./novel.json');
+              if (!response.ok) throw new Error("File not found");
+              const data = await response.json();
+              
+              setNovelLibrary(prev => {
+                if (prev.find(n => n.id === data.id)) return prev;
+                return [...prev, data];
+              });
+              alert("novel.json 파일이 성공적으로 로드되었습니다!");
+            } catch (error) {
+              alert("서버(루트 경로)에서 novel.json 파일을 찾을 수 없습니다. 깃허브에 파일이 올라갔는지 확인해주세요.");
+              console.error(error);
+            }
+          };
+
+          const handleFileUpload = (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              try {
+                const parsedData = JSON.parse(e.target.result);
+                const newData = Array.isArray(parsedData) ? parsedData : [parsedData];
+                setNovelLibrary(prev => [...prev, ...newData]);
+                alert("로컬 파일 로드 성공!");
+              } catch (error) {
+                alert("JSON 파싱 에러: 파일 형식을 확인해주세요.");
+              }
+            };
+            reader.readAsText(file);
+          };
+
+          // --------------------------------------------------------
+          // 엔진 로직
+          // --------------------------------------------------------
+          const loadNovel = (novel) => {
+            setCurrentNovel(novel);
+            const initialUnlocks = {};
+            novel.stages.forEach(st => initialUnlocks[st.id] = st.isUnlocked);
+            setUnlockedStages(initialUnlocks);
+            
+            const initialStats = {};
+            novel.meta.statsConfig.forEach(sc => initialStats[sc.key] = 0);
+            setStats(initialStats);
+            setAppState('HUB');
+          };
+
+          const startStage = (stageId) => {
+            const stageInfo = currentNovel.stages.find(s => s.id === stageId);
+            setCurrentStageId(stageId);
+            setCurrentSceneId(stageInfo.firstScene);
+            setLineIndex(0);
+            setAppState('PLAY');
+          };
+
+          const sceneData = (currentNovel && currentStageId && currentSceneId) 
+            ? currentNovel.scenes[currentStageId][currentSceneId] 
+            : null;
+
+          useEffect(() => {
+            if (appState !== 'PLAY' || !sceneData) return;
+            const currentLine = sceneData.lines[lineIndex];
+            if (!currentLine) return;
+
+            setIsTyping(true);
+            setDisplayedText(""); 
+            let i = 0;
+            
+            const typingInterval = setInterval(() => {
+              if (i < currentLine.text.length) {
+                setDisplayedText(currentLine.text.substring(0, i + 1));
+                i++;
+              } else {
+                clearInterval(typingInterval);
+                setIsTyping(false);
+              }
+            }, 20);
+
+            return () => clearInterval(typingInterval);
+          }, [currentSceneId, lineIndex, appState, sceneData]);
+
+          useEffect(() => {
+            if (scrollRef.current) scrollRef.current.scrollTop = 0;
+          }, [currentSceneId, lineIndex]);
+
+          const handleBoxClick = () => {
+            if (appState !== 'PLAY' || !sceneData) return;
+            const currentLine = sceneData.lines[lineIndex];
+            
+            if (isTyping) {
+              setDisplayedText(currentLine.text);
+              setIsTyping(false);
+            } else {
+              if (lineIndex < sceneData.lines.length - 1) {
+                setLineIndex(prev => prev + 1);
+              } else if (sceneData.nextScene) {
+                setCurrentSceneId(sceneData.nextScene);
+                setLineIndex(0);
+              }
+            }
+          };
+
+          const handleChoice = (choice) => {
+            if (choice.impact) {
+              const newStats = { ...stats };
+              Object.keys(choice.impact).forEach(k => newStats[k] += choice.impact[k]);
+              setStats(newStats);
+            }
+            setCurrentSceneId(choice.next);
+            setLineIndex(0);
+          };
+
+          const handleStageEnd = () => {
+            if (sceneData.unlocks) {
+              setUnlockedStages(prev => ({...prev, [sceneData.unlocks]: true}));
+            }
+            setAppState('HUB');
+          };
+
+          const getStageIcon = (iconStr) => {
+            switch(iconStr) {
+              case 'Briefcase': return <IconBriefcase size={20} />;
+              case 'User': return <IconUser size={20} />;
+              case 'ShieldAlert': return <IconShieldAlert size={20} />;
+              case 'BookOpen': return <IconBookOpen size={20} />;
+              case 'Flame': return <IconFlame size={20} />;
+              default: return <IconDroplets size={20} />;
+            }
+          };
+
+          // ==========================================
+          // [VIEW 1] 서재 (Library)
+          // ==========================================
+          if (appState === 'LIBRARY') {
+            return (
+              <div className="fixed inset-0 w-full h-full bg-zinc-950 text-white flex flex-col p-4 md:p-6 overflow-y-auto">
+                <div className="max-w-5xl mx-auto w-full pt-6 md:pt-10 pb-10">
+                  <div className="flex items-center gap-3 mb-6 md:mb-8">
+                    <IconLibrary size={32} className="text-red-500 shrink-0" />
+                    <h1 className="text-2xl md:text-4xl font-black uppercase tracking-widest break-keep">Visual Novel Engine</h1>
+                  </div>
+                  <p className="text-zinc-400 mb-8 text-sm md:text-base break-keep">
+                    이곳은 JSON 데이터를 주입하여 구동하는 유니버설 엔진의 루트입니다. 깃허브 서버에서 소설을 불러오거나 로컬 파일을 업로드하세요.
+                  </p>
+                  
+                  {/* 데이터 로드 컨트롤 패널 */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-10">
+                    <button 
+                      onClick={loadJsonFromUrl}
+                      className="p-6 bg-red-900/20 border-2 border-red-900 hover:border-red-500 rounded-xl transition-colors flex flex-col items-center justify-center text-center group"
+                    >
+                      <IconDownload size={32} className="text-red-500 mb-3 group-hover:scale-110 transition-transform" />
+                      <h3 className="text-lg md:text-xl font-bold mb-1 text-white">서버에서 novel.json 불러오기</h3>
+                      <p className="text-xs text-red-300/70">깃허브 루트 경로의 데이터를 로드합니다.</p>
+                    </button>
+
+                    <div className="relative p-6 border-2 border-dashed border-zinc-700 hover:border-zinc-500 rounded-xl bg-black/50 transition-colors flex flex-col items-center justify-center text-center cursor-pointer group">
+                      <input type="file" accept=".json" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                      <IconUploadCloud size={32} className="text-zinc-500 mb-3 group-hover:scale-110 transition-transform" />
+                      <h3 className="text-lg md:text-xl font-bold mb-1 text-white">로컬 JSON 파일 업로드</h3>
+                      <p className="text-xs text-zinc-500">PC/모바일 기기의 파일을 직접 로드합니다.</p>
+                    </div>
+                  </div>
+
+                  {/* 로드된 소설 목록 */}
+                  <h3 className="text-xl font-black uppercase tracking-widest mb-4 border-b border-zinc-800 pb-2">Loaded Novels</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                    {novelLibrary.map((novel, idx) => (
+                      <div 
+                        key={idx} 
+                        onClick={() => loadNovel(novel)}
+                        className="group relative h-[250px] md:h-[300px] rounded-xl overflow-hidden cursor-pointer shadow-2xl border border-white/10 hover:border-red-500 transition-all"
+                      >
+                        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: `url(${novel.meta.coverBg})`, filter: 'brightness(0.4)' }} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+                        <div className="absolute bottom-0 left-0 p-5 w-full">
+                          <span className="bg-red-700 text-white px-2 py-1 font-black text-[10px] uppercase tracking-widest mb-2 inline-block shadow-lg">
+                            POV: {novel.meta.protagonist.name}
+                          </span>
+                          <h2 className="text-xl md:text-2xl font-black mb-1 leading-tight">{novel.meta.title}</h2>
+                          <p className="text-zinc-400 text-xs md:text-sm mb-3 line-clamp-2">{novel.meta.description}</p>
+                          <div className="flex items-center text-red-400 font-bold text-sm group-hover:text-white transition-colors">
+                            <IconPlay size={16} className="mr-1" /> START ENGINE
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // ==========================================
+          // [VIEW 2] 작전 통제실 (HUB)
+          // ==========================================
+          if (appState === 'HUB') {
+            return (
+              <div className="fixed inset-0 w-full h-full bg-black text-white flex flex-col">
+                <div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: `url(${currentNovel.meta.coverBg})` }} />
+                <div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+                
+                <div className="relative z-10 p-4 md:p-6 flex items-center justify-between border-b border-white/10">
+                  <button onClick={() => setAppState('LIBRARY')} className="flex items-center text-zinc-400 hover:text-white font-bold transition-colors text-sm md:text-base">
+                    <IconRotateCcw size={16} className="mr-2"/> Library
+                  </button>
+                  <div className="text-sm md:text-lg font-black tracking-widest uppercase text-red-500">{currentNovel.meta.title}</div>
+                </div>
+
+                <div className="relative z-10 flex flex-col items-center pt-8 pb-12 px-4 overflow-y-auto flex-1 custom-scrollbar">
+                  <h2 className="text-2xl md:text-4xl font-black text-white mb-2 tracking-[0.2em] uppercase text-center">Stage Selection</h2>
+                  <p className="text-zinc-400 mb-8 text-xs md:text-sm text-center break-keep">{currentNovel.meta.description}</p>
+                  
+                  <div className="flex flex-col gap-3 md:gap-4 w-full max-w-2xl pb-10">
+                    {currentNovel.stages.map((st) => (
+                      <button
+                        key={st.id}
+                        disabled={!unlockedStages[st.id]}
+                        onClick={() => startStage(st.id)}
+                        className={`p-4 md:p-6 border-l-4 bg-zinc-900/80 transition-all text-left flex items-center justify-between group rounded-sm
+                          ${unlockedStages[st.id] ? `border-${st.color.replace('text-', '')} hover:bg-zinc-800 active:scale-[0.98] shadow-lg` : 'border-zinc-800 opacity-40 cursor-not-allowed'}`}
+                      >
+                        <div className="flex items-center gap-3 md:gap-4">
+                          <div className={`p-2 md:p-3 bg-black rounded-full shrink-0 ${unlockedStages[st.id] ? st.color : 'text-zinc-600'}`}>
+                            {getStageIcon(st.icon)}
+                          </div>
+                          <div>
+                            <span className="text-[10px] md:text-xs text-zinc-400 font-bold tracking-widest uppercase mb-1 block">
+                              {st.charName} ({st.role})
+                            </span>
+                            <span className="text-base md:text-2xl font-black text-white">{st.title}</span>
+                          </div>
+                        </div>
+                        {unlockedStages[st.id] ? <IconPlay size={20} className={`${st.color} group-hover:translate-x-2 transition-transform`} /> : <IconLock size={20} className="text-zinc-600" />}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            );
+          }
+
+          // ==========================================
+          // [VIEW 3] 플레이 뷰 (PLAY)
+          // ==========================================
+          if (!sceneData) return <div className="bg-black text-white h-screen flex items-center justify-center">Loading Data Error</div>;
+
+          return (
+            <div className="fixed inset-0 w-full flex flex-col bg-black text-white font-sans select-none overflow-hidden">
+              
+              <div className="absolute inset-0 pointer-events-none z-0">
+                <div className="absolute inset-0 bg-cover bg-center transition-all duration-700 ease-in-out scale-105" style={{ backgroundImage: `url(${sceneData.bg})`, filter: 'brightness(0.35) contrast(1.1)' }} />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+              </div>
+
+              <div className="relative z-40 w-full px-2 pt-2 md:px-6 md:pt-6 shrink-0 pointer-events-none flex justify-between items-start gap-2">
+                <div className="bg-zinc-950/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-3 border-l-4 border-red-600 shadow-lg shrink-0">
+                  <span className="text-[8px] md:text-[10px] text-red-500 font-black tracking-widest block mb-0.5">{currentNovel.meta.protagonist.pov}</span>
+                  <span className="text-sm md:text-xl font-serif font-bold italic">{currentNovel.meta.protagonist.name}</span>
+                </div>
+                
+                <div className="flex gap-1 md:gap-2 flex-wrap justify-end">
+                  {currentNovel.meta.statsConfig.map((sc, i) => (
+                    <div key={i} className={`bg-zinc-950/90 backdrop-blur-md px-2 py-2 md:px-4 md:py-3 border-b-2 border-${sc.color}-600 text-center min-w-[50px] md:min-w-[80px] shadow-lg`}>
+                      <div className={`text-[7px] md:text-[9px] text-${sc.color}-500 font-black uppercase mb-0.5`}>{sc.label}</div>
+                      <div className="text-xs md:text-lg font-black tabular-nums">{stats[sc.key]}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="relative z-10 flex-1 min-h-0 flex justify-center items-end pointer-events-none px-4 pb-2">
+                {sceneData.character && (
+                  <div className="relative animate-fade-in-up w-full max-w-[220px] md:max-w-[320px] aspect-[2/3] max-h-[50vh]">
+                    <div className={`absolute inset-0 bg-gradient-to-t ${sceneData.character.color} to-transparent opacity-30 rounded-t-full blur-xl`} />
+                    <div className="absolute inset-0 bg-white/5 border-x border-t border-white/20 rounded-t-full backdrop-blur-[2px] flex flex-col items-center pt-8 md:pt-16">
+                      <span className="text-white/20 text-3xl md:text-5xl font-black tracking-tighter">TARGET</span>
+                      <span className={`bg-${sceneData.character.color.replace('text-', '').replace('from-', '')} text-white px-4 py-1 font-black skew-x-[-10deg] text-sm md:text-lg uppercase mt-2 shadow-lg`}>
+                        {sceneData.character.name}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="relative z-40 w-full shrink-0 px-2 pb-4 md:px-6 md:pb-8 pt-2 pointer-events-auto">
+                <div className="max-w-4xl mx-auto flex flex-col w-full">
+                  
+                  {sceneData.lines && sceneData.lines[lineIndex] && (
+                    <div className="self-start bg-red-700 text-white px-4 py-1 md:px-5 md:py-1.5 font-black text-sm md:text-lg skew-x-[-10deg] border-r-4 border-white shadow-lg z-10 ml-2 mb-[-2px]">
+                      <span className="skew-x-[10deg] block tracking-wide">{sceneData.lines[lineIndex].speaker}</span>
+                    </div>
+                  )}
+
+                  <div onClick={handleBoxClick} className="bg-zinc-950/95 border-2 border-white/20 p-4 md:p-8 shadow-2xl relative flex flex-col min-h-[140px] md:min-h-[180px] cursor-pointer rounded-sm">
+                    <div className="absolute top-0 right-0 w-12 h-12 bg-red-600/10 rounded-bl-full pointer-events-none" />
+                    
+                    <div ref={scrollRef} className="text-[15px] md:text-xl font-medium leading-[1.7] md:leading-[1.9] text-zinc-100 flex-grow break-keep mb-2 overflow-y-auto custom-scrollbar pr-2" style={{ maxHeight: '25vh' }}>
+                      {displayedText}
+                    </div>
+
+                    {!isTyping && (!sceneData.choices && !sceneData.endStage && lineIndex < sceneData.lines.length - 1) && (
+                      <div className="self-end mt-auto animate-bounce"><IconChevronRight size={20} className="text-red-500" /></div>
+                    )}
+                  </div>
+
+                  {!isTyping && sceneData.choices && lineIndex === sceneData.lines.length - 1 && (
+                    <div className="flex flex-col gap-2 mt-2 md:mt-3 animate-fade-in-up">
+                      {sceneData.choices.map((c, i) => (
+                        <button key={i} onClick={(e) => { e.stopPropagation(); handleChoice(c); }} className="w-full p-3 md:p-4 bg-zinc-900/95 border border-white/20 hover:border-red-500 active:bg-red-900/40 transition-colors text-left flex items-center justify-between shadow-lg rounded-sm group">
+                          <span className="text-zinc-200 font-bold text-xs md:text-base leading-snug break-keep pr-2 group-hover:text-white transition-colors">{c.text}</span>
+                          <IconChevronRight size={18} className="text-red-500 shrink-0 group-hover:translate-x-1 transition-transform" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {!isTyping && sceneData.endStage && lineIndex === sceneData.lines.length - 1 && (
+                     <button onClick={handleStageEnd} className="w-full mt-2 md:mt-3 p-3 md:p-4 bg-red-700 hover:bg-red-600 font-black text-center uppercase tracking-widest transition-colors shadow-lg rounded-sm text-sm md:text-base">
+                       Return to Hub
+                     </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
+```
