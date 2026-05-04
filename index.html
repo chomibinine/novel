@@ -181,7 +181,7 @@
           };
 
           // --------------------------------------------------------
-          // [핵심 변경] 연속 씬 분할 & 무조건 2개 선택지 강제 시스템
+          // [핵심 변경] 예측 불가 선택지 & 회복 기회(Recovery) 부여 AI 패치
           // --------------------------------------------------------
           const handleAIGeneration = async () => {
             if (!rawText.trim()) {
@@ -192,14 +192,14 @@
             setIsGenerating(true);
             setErrorMsg("");
 
-            const systemInstruction = `당신은 비주얼 노벨 게임 엔진의 완벽한 텍스트 파서입니다. 사용자가 입력한 소설 원문을 단 한 글자도 생략하지 말고 100% 그대로 JSON 배열로 이식해야 합니다.
+            const systemInstruction = `당신은 비주얼 노벨 게임 엔진의 완벽한 텍스트 파서이자 시나리오 기획자입니다. 사용자가 입력한 소설 원문을 단 한 글자도 생략하지 말고 100% 그대로 JSON 배열로 이식해야 합니다.
 
 [절대 규칙]
-1. 입력된 원문 텍스트가 길다면, 글의 흐름(Part A, Part B 등)에 따라 반드시 3~5개의 연속된 씬(scene1, scene2, scene3...)으로 나누어 분배하세요. 한 씬에 전부 때려넣지 마세요.
-2. 각 씬의 마지막에는 **반드시 2개의 선택지(choices)**를 창작하여 다음 씬으로 연결하세요. 선택지가 1개이거나 없으면 절대 안 됩니다.
-3. 원문의 스토리를 따라가는 '진행 루트'와 게임이 끝나는 '파멸(Bad End) 루트'를 선택지로 구성하면 좋습니다.
-4. 화자가 명확한 대사는 speaker에 이름을 넣고, 행동이나 심리 묘사 등 지문은 speaker에 주인공 이름(예: 강진혁)을 넣으세요.
-5. 이야기의 맨 마지막 씬(원문이 끝나는 부분)이나 배드 엔딩 씬에만 "endStage": true 속성을 넣고, 그곳에는 선택지(choices)를 빼세요.
+1. 입력된 원문 텍스트의 흐름에 따라 반드시 3~5개의 연속된 씬(scene1, scene2, scene3...)으로 나누어 분배하세요.
+2. 각 씬의 마지막에는 **반드시 2개의 선택지(choices)**를 창작하세요. 선택지의 내용은 뻔한 성공/실패가 아니라 심리적 갈등을 유발하는 입체적이고 의외성 있는 내용이어야 합니다.
+3. **[중요 - 회복 기회 부여]** 한 번의 잘못된 선택으로 바로 Game Over 시키지 마세요! 선택지 중 하나가 원작의 흐름(메인 루트)이라면, 다른 하나는 '위기'나 '뜻밖의 변수'를 겪는 우회 씬(회복 루트)으로 연결하세요. 이 우회 씬에서는 짧은 페널티 묘사나 상대방의 도발 후, 결국 다시 게임이 진행될 수 있도록 다음 메인 씬으로 연결해 주세요.
+4. 화자가 명확한 대사는 speaker에 이름을 넣고, 행동/심리 지문은 speaker에 주인공 이름(예: 강진혁)을 넣으세요.
+5. 이야기의 진짜 맨 마지막 씬(원문이 끝나는 최종 부분)에만 "endStage": true 속성을 넣고, 그곳에는 선택지(choices)를 빼세요.
 6. 오직 아래 JSON 구조에 맞추어 JSON 데이터만 출력하세요. 마크다운(\`\`\`json)은 제외하세요.
 
 [JSON 구조 포맷 예시]
@@ -225,37 +225,51 @@
         "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
         "character": { "name": "상대방", "role": "역할", "color": "from-red-600" },
         "lines": [
-          { "speaker": "화자이름", "text": "원문 초반부 문장 1" },
-          { "speaker": "화자이름", "text": "원문 초반부 문장 2" }
+          { "speaker": "주인공", "text": "원문 초반부 문장 1" },
+          { "speaker": "상대방", "text": "원문 초반부 문장 2" }
         ],
         "choices": [
-          { "text": "[수락] 계속 이야기를 듣는다.", "next": "scene2", "impact": { "desire": 10 } },
-          { "text": "[거절] 당장 방을 나간다.", "next": "bad_end_1", "impact": { "desire": -10 } }
+          { "text": "[순응] 그녀의 이끌림에 몸을 맡긴다.", "next": "scene2", "impact": { "desire": 10 } },
+          { "text": "[통제] 오히려 그녀의 손목을 강하게 쥐어 제압한다.", "next": "scene1_recovery", "impact": { "corruption": 5 } }
+        ]
+      },
+      "scene1_recovery": {
+        "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
+        "character": { "name": "상대방", "role": "역할", "color": "from-red-600" },
+        "lines": [
+          { "speaker": "주인공", "text": "내 뜻밖의 거친 반응에 그녀는 잠시 당황했다." },
+          { "speaker": "상대방", "text": "어머... 이런 취향이실 줄은 몰랐네요. 더 해봐요." }
+        ],
+        "choices": [
+          { "text": "[진행] 멈추지 않고 다음 선을 넘는다.", "next": "scene2", "impact": { "desire": 5 } },
+          { "text": "[도발] 그녀의 귓가에 조롱하듯 속삭인다.", "next": "scene2", "impact": { "corruption": 10 } }
         ]
       },
       "scene2": {
         "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
         "lines": [
-          { "speaker": "화자", "text": "원문 중반부 이어지는 내용..." }
+          { "speaker": "주인공", "text": "원문 중반부 이어지는 내용..." }
         ],
         "choices": [
           { "text": "[탐닉] 더 깊이 들어간다.", "next": "scene3", "impact": { "corruption": 15 } },
-          { "text": "[망설임] 잠시 멈추고 생각한다.", "next": "bad_end_2", "impact": { "corruption": -5 } }
+          { "text": "[망설임] 순간 멈칫하며 이성을 찾으려 한다.", "next": "scene2_recovery", "impact": { "corruption": -5 } }
+        ]
+      },
+      "scene2_recovery": {
+        "lines": [
+          { "speaker": "상대방", "text": "이제 와서 빼는 거예요? 이미 늦었어요." },
+          { "speaker": "주인공", "text": "그녀의 도발에 내 알량한 이성은 다시 한번 부서졌다." }
+        ],
+        "choices": [
+          { "text": "[포기] 완전히 그녀에게 주도권을 넘긴다.", "next": "scene3", "impact": { "desire": 10 } },
+          { "text": "[반격] 다시 거칠게 그녀를 몰아붙인다.", "next": "scene3", "impact": { "corruption": 10 } }
         ]
       },
       "scene3": {
         "bg": "https://images.unsplash.com/photo-1518112391480-9811fd279232?q=80",
         "lines": [
-          { "speaker": "화자", "text": "원문 결말부 내용..." }
+          { "speaker": "주인공", "text": "원문 결말부 내용..." }
         ],
-        "endStage": true
-      },
-      "bad_end_1": {
-        "lines": [ { "speaker": "시스템", "text": "[Game Over] 잘못된 선택으로 도망쳤습니다." } ],
-        "endStage": true
-      },
-      "bad_end_2": {
-        "lines": [ { "speaker": "시스템", "text": "[Game Over] 망설이다가 사냥감을 놓쳤습니다." } ],
         "endStage": true
       }
     }
@@ -590,6 +604,7 @@
     </script>
 </body>
 </html>
+
 
 
 
