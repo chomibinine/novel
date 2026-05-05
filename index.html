@@ -34,9 +34,6 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // ==========================================
-        // [SVG 아이콘 모음 (전부 복구)]
-        // ==========================================
         const IconChevronRight = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>;
         const IconRotateCcw = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg>;
         const IconPlay = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
@@ -46,8 +43,6 @@
         const IconDownload = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
         const IconTrash = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
         const IconLibrary = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>;
-
-        const colorPalette = { red: "rgb(220, 38, 38)", blue: "rgb(37, 99, 235)", purple: "rgb(147, 51, 234)", green: "rgb(22, 163, 74)", yellow: "rgb(202, 138, 4)" };
 
         const App = () => {
           const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key_pro') || "");
@@ -70,9 +65,6 @@
           const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
           const [appendTargetId, setAppendTargetId] = useState("NEW");
 
-          const scrollRef = useRef(null);
-
-          // 데이터 로컬 보존 (복구)
           useEffect(() => {
             const savedLib = localStorage.getItem('novel_library_pro');
             if (savedLib) setNovelLibrary(JSON.parse(savedLib));
@@ -83,7 +75,6 @@
             localStorage.setItem('gemini_api_key_pro', apiKey);
           }, [novelLibrary, apiKey]);
 
-          // 텍스트 분할 함수 (복구)
           const chunkText = (text, maxLength = 2500) => {
             const paragraphs = text.split('\n');
             const chunks = [];
@@ -117,7 +108,6 @@
             processLoadedText(rawText);
           };
 
-          // 파일 업로드 처리 (복구)
           const handleFileUpload = (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -164,7 +154,6 @@
             event.target.value = null;
           };
 
-          // 다운로드 및 삭제 (복구)
           const exportNovel = (e, novel) => {
             e.stopPropagation();
             const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(novel, null, 2));
@@ -177,7 +166,7 @@
             if(confirm("정말 이 게임을 삭제하시겠습니까?")) setNovelLibrary(prev => prev.filter(n => n.id !== id));
           };
 
-          // AI 변환 코어 로직 (최신 gemini-2.5-flash 모델 적용)
+          // AI 변환 로직 (자동 우회 시스템 탑재)
           const handleAIGeneration = async () => {
             if (!apiKey) { showError("API Key를 입력해주세요."); return; }
             if (!rawText.trim()) { showError("텍스트를 입력해주세요."); return; }
@@ -192,34 +181,57 @@
 4. 배경(bg)은 소설 상황에 맞추되, 고퀄리티 애니메이션 배경 URL로 생성하세요.
 5. 오직 순수 JSON 데이터만 반환하세요.`;
 
-            try {
-              // 에러 해결: 구형 1.5-flash 대신 최신 2.5-flash 모델 사용
-              const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-              
-              const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: rawText }] }],
-                  systemInstruction: { parts: [{ text: systemInstruction }] },
-                  generationConfig: { responseMimeType: "application/json", temperature: 0.8 },
-                  safetySettings: [
-                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-                  ]
-                })
-              });
+            // 모델 풀: 하나가 바쁘면 다음 모델로 자동 재시도
+            const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
+            let finalData = null;
 
-              const data = await response.json();
-              
-              if (data.error) throw new Error(data.error.message);
-              if (!data.candidates || data.candidates[0].finishReason === "SAFETY") {
-                throw new Error("안전 필터에 의해 차단되었습니다. 민감한 단어를 조금 순화해주세요.");
+            for (const model of modelsToTry) {
+              try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+                const response = await fetch(url, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    contents: [{ parts: [{ text: rawText }] }],
+                    systemInstruction: { parts: [{ text: systemInstruction }] },
+                    generationConfig: { responseMimeType: "application/json", temperature: 0.8 },
+                    safetySettings: [
+                      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+                      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+                      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+                      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
+                    ]
+                  })
+                });
+
+                const data = await response.json();
+                
+                if (data.error) {
+                  // High Demand 에러거나 503 에러면 다음 모델로 넘어감
+                  if (data.error.message.toLowerCase().includes("high demand") || data.error.code === 503 || data.error.code === 404) {
+                    console.warn(`${model} 서버 혼잡/오류. 다음 모델 시도 중...`);
+                    continue; 
+                  }
+                  throw new Error(data.error.message);
+                }
+                
+                if (!data.candidates || data.candidates[0].finishReason === "SAFETY") {
+                  throw new Error("안전 필터에 의해 차단되었습니다. 민감한 단어를 조금 순화해주세요.");
+                }
+
+                finalData = data; // 성공하면 데이터 저장하고 루프 탈출
+                break;
+              } catch (err) {
+                // Fetch 자체 네트워크 에러 등 처리
+                if (err.message.toLowerCase().includes("high demand")) continue;
+                throw err;
               }
+            }
 
-              let jsonText = data.candidates[0].content.parts[0].text.trim().replace(/```json/g, '').replace(/```/g, '');
+            try {
+              if (!finalData) throw new Error("현재 구글 AI 서버 전체가 혼잡합니다. 1~2분 뒤에 다시 시도해주세요.");
+
+              let jsonText = finalData.candidates[0].content.parts[0].text.trim().replace(/```json/g, '').replace(/```/g, '');
               const parsedNovel = JSON.parse(jsonText);
               
               let createdId = "";
@@ -246,7 +258,6 @@
                 });
               }
 
-              // 파트별 연속 처리 로직 (복구)
               setTimeout(() => {
                 if (textChunks.length > 0 && currentChunkIndex < textChunks.length - 1) {
                   const nextIdx = currentChunkIndex + 1;
@@ -264,9 +275,8 @@
             finally { setIsGenerating(false); }
           };
 
-          const showError = (msg) => { setErrorMsg(msg); setTimeout(() => setErrorMsg(""), 5000); };
+          const showError = (msg) => { setErrorMsg(msg); setTimeout(() => setErrorMsg(""), 6000); };
 
-          // --- 게임 플레이 제어 ---
           const startStage = (novel, stageId) => {
             setCurrentNovel(novel); setCurrentStageId(stageId);
             const firstSceneId = novel.stages.find(s=>s.id===stageId).firstScene || Object.keys(novel.scenes[stageId])[0];
@@ -301,7 +311,7 @@
           if (appState === 'LIBRARY') {
             return (
               <div className="fixed inset-0 w-full h-full bg-zinc-950 text-white overflow-y-auto custom-scrollbar">
-                {errorMsg && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-red-600 px-6 py-4 rounded-lg z-50 font-bold shadow-2xl animate-fade-in-up text-center border border-white/20">{errorMsg}</div>}
+                {errorMsg && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-red-600 px-6 py-4 rounded-lg z-50 font-bold shadow-2xl animate-fade-in-up text-center border border-white/20 min-w-[300px]">{errorMsg}</div>}
                 
                 <div className="max-w-5xl mx-auto py-10 px-6 pb-20">
                   <div className="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
@@ -315,7 +325,6 @@
                     </div>
                   </div>
 
-                  {/* 변환기 영역 (수동 분할 및 파일 업로드 복구) */}
                   <div className="bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden mb-12">
                     <div className="bg-zinc-800 p-4 border-b border-zinc-700 flex flex-wrap items-center justify-between gap-3">
                       <div className="flex items-center gap-2 font-bold text-red-400 text-sm"><IconCpu size={18} /> AI 자동 분할 변환기</div>
@@ -334,7 +343,7 @@
                           <span className="bg-red-700 text-white px-2 py-1 rounded">현재 파트 {currentChunkIndex + 1} / {textChunks.length}</span>
                         </div>
                       )}
-                      <textarea value={rawText} onChange={(e)=>setRawText(e.target.value)} disabled={isGenerating || textChunks.length > 1} placeholder="이곳에 소설 내용을 입력하세요. PDF, DOCX 파일도 가져올 수 있습니다." className="w-full h-48 bg-black border border-zinc-800 rounded-xl p-4 text-sm mb-4 outline-none focus:border-red-600 custom-scrollbar resize-none"/>
+                      <textarea value={rawText} onChange={(e)=>setRawText(e.target.value)} disabled={isGenerating || textChunks.length > 1} placeholder="이곳에 소설 내용을 입력하세요. PDF, DOCX 파일도 지원합니다." className="w-full h-48 bg-black border border-zinc-800 rounded-xl p-4 text-sm mb-4 outline-none focus:border-red-600 custom-scrollbar resize-none"/>
                       
                       <div className="flex flex-col md:flex-row gap-3">
                         <select value={appendTargetId} onChange={(e)=>setAppendTargetId(e.target.value)} disabled={textChunks.length > 1 && currentChunkIndex > 0} className="flex-1 bg-zinc-800 border border-zinc-700 text-sm font-bold p-3 rounded-xl outline-none focus:border-red-600 disabled:opacity-50">
@@ -342,13 +351,12 @@
                           {novelLibrary.map(n => <option key={n.id} value={n.id}>➕ {n.meta.title}에 누적 저장하기</option>)}
                         </select>
                         <button onClick={handleAIGeneration} disabled={isGenerating} className="px-8 py-3 bg-red-700 hover:bg-red-600 rounded-xl font-black text-sm flex items-center justify-center gap-2 disabled:bg-zinc-800 transition-all active:scale-95 shadow-lg">
-                          {isGenerating ? <><IconCpu size={18} className="animate-spin-slow"/> 파싱 중...</> : <><IconPlay size={18}/> 텍스트를 게임으로 변환</>}
+                          {isGenerating ? <><IconCpu size={18} className="animate-spin-slow"/> 서버 우회 및 분석 중...</> : <><IconPlay size={18}/> 텍스트를 게임으로 변환</>}
                         </button>
                       </div>
                     </div>
                   </div>
 
-                  {/* 라이브러리 리스트 영역 (내보내기/삭제 복구) */}
                   <h2 className="text-xl font-black mb-6 tracking-widest text-white border-l-4 border-red-600 pl-3">MY NOVELS</h2>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {novelLibrary.map(n => (
