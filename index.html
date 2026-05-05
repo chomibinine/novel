@@ -60,8 +60,9 @@
 
         const getSafeUrl = (url) => {
             if (!url) return '';
-            const decoded = url.replace(/%20/g, ' ');
-            return decoded.replace(/ /g, '%20').replace(/\(/g, '%28').replace(/\)/g, '%29');
+            // 따옴표나 공백 등 오류를 유발하는 문자열을 안전하게 정리
+            let cleanUrl = url.trim().replace(/^['"]|['"]$/g, '');
+            return cleanUrl;
         };
 
         const colorStyles = {
@@ -87,7 +88,6 @@
             try {
               const res = await fetch(url, options);
               if (!res.ok) {
-                  // [수정] 서버의 상세 에러 메시지를 가로채서 화면에 표시하도록 변경
                   const errText = await res.text();
                   let parsedMsg = `서버 상태 코드: ${res.status}`;
                   try {
@@ -156,9 +156,6 @@
           const [textChunks, setTextChunks] = useState([]);
           const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
           const [appendTargetId, setAppendTargetId] = useState("NEW");
-
-          const [charImgLoaded, setCharImgLoaded] = useState(false);
-          const [bgImgLoaded, setBgImgLoaded] = useState(false);
 
           const scrollRef = useRef(null);
 
@@ -336,7 +333,6 @@
 }`;
 
             try {
-              // 🚨 수정된 부분: 2026년 기준 가장 최신이자 안정적인 gemini-2.5-flash 모델로 확정 변경했습니다.
               const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
               
               const payload = {
@@ -495,11 +491,6 @@
           const currentStageIndex = currentNovel?.stages?.findIndex(s => s.id === currentStageId) ?? -1;
           const hasNextStage = currentNovel && currentStageIndex !== -1 && currentStageIndex < (currentNovel.stages?.length || 0) - 1;
           const nextStage = hasNextStage ? currentNovel.stages[currentStageIndex + 1] : null;
-
-          useEffect(() => {
-            setCharImgLoaded(false);
-            setBgImgLoaded(false);
-          }, [currentSceneId]);
 
           useEffect(() => {
             if (appState !== 'PLAY' || !sceneData || !sceneData.lines) return;
@@ -756,50 +747,40 @@
           return (
             <div className="fixed inset-0 w-full flex flex-col bg-black text-white font-sans select-none overflow-hidden">
               
-              {/* 배경 이미지 영역 */}
+              {/* [해결] 투명도(opacity) 제어 및 로딩 상태를 전면 제거한 네이티브 렌더링 영역 */}
+              
+              {/* 1. 배경 이미지 */}
               <div className="absolute inset-0 pointer-events-none z-0">
-                <img 
-                    src={getSafeUrl(sceneData.bg)} 
-                    style={{display: 'none'}} 
-                    onLoad={() => setBgImgLoaded(true)} 
-                    alt="bg-loader" 
-                />
                 <div 
-                    className={`absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out scale-105 ${bgImgLoaded ? 'opacity-100' : 'opacity-0'}`} 
+                    className="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out scale-105 z-0" 
                     style={{ 
                         backgroundImage: `url('${getSafeUrl(sceneData.bg)}')`, 
                         filter: 'brightness(0.5) contrast(1.1)'
                     }} 
                 />
-                {!bgImgLoaded && sceneData.bg && (
-                    <div className="absolute inset-0 bg-zinc-900 flex flex-col items-center justify-center text-zinc-600">
-                        <IconImage size={48} className="animate-pulse-slow mb-4 opacity-30" />
-                    </div>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
               </div>
 
-              {/* 화면을 가득 채우는 캐릭터 이미지 영역 (z-10) */}
-              <div className="absolute inset-0 z-10 pointer-events-none flex justify-center items-center overflow-hidden">
+              {/* 2. 화면을 가득 채우는 캐릭터 이미지 (z-20) */}
+              <div className="absolute inset-0 z-20 pointer-events-none flex justify-center items-center overflow-hidden">
                 {sceneData.character?.charImage ? (
                   <>
-                    {!charImgLoaded && (
-                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-20">
-                            <IconCpu size={32} className="text-red-500 animate-spin-slow mb-3" />
-                            <span className="text-red-400 font-bold tracking-widest text-sm animate-pulse">실시간 AI 일러스트 생성 중...</span>
-                            <span className="text-zinc-500 text-xs mt-2">약 3~10초 소요될 수 있습니다.</span>
-                        </div>
-                    )}
+                    {/* 로딩 표시기 (이미지가 덮기 전까지 화면에 보임) */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10">
+                        <IconCpu size={32} className="text-red-500 animate-spin-slow mb-3" />
+                        <span className="text-red-400 font-bold tracking-widest text-sm animate-pulse">일러스트 실시간 로딩 중...</span>
+                    </div>
+                    {/* 이미지는 다운로드 완료 즉시 화면을 덮음 */}
                     <img 
                       src={getSafeUrl(sceneData.character.charImage)} 
                       alt="character" 
-                      className={`w-full h-full object-cover object-top transition-opacity duration-1000 ${charImgLoaded ? 'opacity-95' : 'opacity-0'}`}
-                      onLoad={() => setCharImgLoaded(true)}
+                      className="w-full h-full object-cover object-top opacity-95 relative z-20"
                     />
-                    <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-black/70 to-transparent" />
+                    {/* UI 가독성을 위한 상단 검은색 그라데이션 */}
+                    <div className="absolute top-0 left-0 w-full h-32 bg-gradient-to-b from-black/70 to-transparent z-30" />
                   </>
                 ) : (
-                  <div className={`absolute inset-0 bg-gradient-to-t ${getColorClass(sceneData.character?.color, 'gradient')} to-transparent opacity-30 blur-xl`} />
+                  <div className={`absolute inset-0 bg-gradient-to-t ${getColorClass(sceneData.character?.color, 'gradient')} to-transparent opacity-30 blur-xl z-20`} />
                 )}
               </div>
 
