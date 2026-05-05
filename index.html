@@ -87,8 +87,18 @@
             try {
               const res = await fetch(url, options);
               if (!res.ok) {
+                  // [수정] 서버의 상세 에러 메시지를 가로채서 화면에 표시하도록 변경
                   const errText = await res.text();
-                  throw new Error(`HTTP error! status: ${res.status}`);
+                  let parsedMsg = `서버 상태 코드: ${res.status}`;
+                  try {
+                      const errJson = JSON.parse(errText);
+                      if (errJson.error && errJson.error.message) {
+                          parsedMsg = errJson.error.message;
+                      }
+                  } catch (e) {
+                      parsedMsg += ` | ${errText}`;
+                  }
+                  throw new Error(parsedMsg);
               }
               return res;
             } catch (err) {
@@ -326,8 +336,8 @@
 }`;
 
             try {
-              // 🚨 수정된 부분: 단종된 1.5 모델 대신 최신 gemini-2.0-flash 모델로 변경했습니다.
-              const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+              // 🚨 수정된 부분: 2026년 기준 가장 최신이자 안정적인 gemini-2.5-flash 모델로 확정 변경했습니다.
+              const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
               
               const payload = {
                 contents: [{ parts: [{ text: rawText }] }],
@@ -433,7 +443,7 @@
 
           const showError = (msg) => {
             setErrorMsg(msg);
-            setTimeout(() => setErrorMsg(""), 5000);
+            setTimeout(() => setErrorMsg(""), 6000);
           };
 
           const loadNovel = (novel) => {
@@ -577,7 +587,7 @@
             return (
               <div className="fixed inset-0 w-full h-full bg-zinc-950 text-white flex flex-col overflow-y-auto">
                 {errorMsg && (
-                  <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-md shadow-2xl z-50 font-bold animate-fade-in-up">
+                  <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-4 rounded-md shadow-2xl z-50 font-bold animate-fade-in-up max-w-[90%] text-center break-keep">
                     {errorMsg}
                   </div>
                 )}
