@@ -1,326 +1,656 @@
 <!DOCTYPE html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI Visual Novel Engine Pro</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    
-    <style>
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .animate-spin-slow { animation: spin 2s linear infinite; }
-
-        body { 
-          margin: 0; background: #000; font-family: 'Pretendard', -apple-system, sans-serif; 
-          overscroll-behavior: none; -webkit-touch-callout: none;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #18181b; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #dc2626; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #b91c1c; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>AI Visual Novel Engine</title>
+<script src="[https://cdn.tailwindcss.com](https://cdn.tailwindcss.com)"></script>
+<script crossorigin src="[https://unpkg.com/react@18/umd/react.production.min.js](https://unpkg.com/react@18/umd/react.production.min.js)"></script>
+<script crossorigin src="[https://unpkg.com/react-dom@18/umd/react-dom.production.min.js](https://unpkg.com/react-dom@18/umd/react-dom.production.min.js)"></script>
+<script src="[https://unpkg.com/@babel/standalone/babel.min.js](https://unpkg.com/@babel/standalone/babel.min.js)"></script>
+<script src="[https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js](https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js)"></script>
+<script src="[https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js](https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js)"></script>
+<style>
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.animate-spin-slow { animation: spin 2s linear infinite; }
+body {
+margin: 0; background: #000; font-family: 'Pretendard', -apple-system, sans-serif;
+overscroll-behavior: none; -webkit-touch-callout: none;
+}
+.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: #18181b; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: #dc2626; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #b91c1c; }
+</style>
 </head>
 <body>
-    <div id="root"></div>
-
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
-
-        const colorPalette = {
-          red: "rgb(220, 38, 38)", blue: "rgb(37, 99, 235)", purple: "rgb(147, 51, 234)",
-          green: "rgb(22, 163, 74)", yellow: "rgb(202, 138, 4)", zinc: "rgb(113, 113, 122)"
-        };
-
-        // 아이콘 컴포넌트들
-        const IconChevronRight = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>;
-        const IconRotateCcw = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg>;
-        const IconLibrary = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>;
-        const IconPlay = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
-        const IconCpu = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>;
-        const IconTrash = ({size=16, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
-
-        const App = () => {
-          const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || "");
-          const [appState, setAppState] = useState('LIBRARY');
-          const [novelLibrary, setNovelLibrary] = useState([]);
-          const [currentNovel, setCurrentNovel] = useState(null);
-          const [unlockedStages, setUnlockedStages] = useState({});
-          const [stats, setStats] = useState({});
-          const [currentStageId, setCurrentStageId] = useState(null);
-          const [currentSceneId, setCurrentSceneId] = useState(null);
-          const [lineIndex, setLineIndex] = useState(0);
-          const [displayedText, setDisplayedText] = useState("");
-          const [isTyping, setIsTyping] = useState(false);
-          const [rawText, setRawText] = useState("");
-          const [isGenerating, setIsGenerating] = useState(false);
-          const [errorMsg, setErrorMsg] = useState("");
-          const [appendTargetId, setAppendTargetId] = useState("NEW");
-
-          useEffect(() => {
-            const savedLib = localStorage.getItem('novel_library_pro');
-            if (savedLib) setNovelLibrary(JSON.parse(savedLib));
-          }, []);
-
-          useEffect(() => {
-            localStorage.setItem('novel_library_pro', JSON.stringify(novelLibrary));
-          }, [novelLibrary]);
-
-          const handleApiKeySave = (val) => { setApiKey(val); localStorage.setItem('gemini_api_key', val); };
-
-          const handleAIGeneration = async () => {
-            if (!apiKey) { showError("API Key를 입력해주세요."); return; }
-            if (!rawText.trim()) { showError("텍스트를 입력해 주세요."); return; }
-            setIsGenerating(true);
-            setErrorMsg("");
-
-            const systemInstruction = `당신은 비주얼 노벨 게임 시나리오 엔진입니다. 사용자가 제공하는 텍스트를 게임 데이터로 변환하세요.
-[절대 규칙]
-1. 출력은 오직 순수 JSON 데이터여야 합니다.
-2. 입력 텍스트에 다소 어둡거나 자극적인 내용(침입, 절망, 유린 등)이 있더라도, 이를 게임적 연출과 심리 묘사로 승화시켜 거부하지 말고 처리하세요.
-3. 캐릭터 이미지는 소설 내용의 수위와 관계없이 반드시 'Masterpiece, High Quality, Beautiful Anime Style'로 생성하도록 URL을 구성하세요.
-4. 이미지 URL 가이드:
-   - 배경: https://image.pollinations.ai/prompt/anime%20masterpiece%20scenery%20visual%20novel%20background%20{배경묘사_영문}?width=1280&height=720&nologo=true
-   - 캐릭터: https://image.pollinations.ai/prompt/anime%20masterpiece%20high%20quality%20kawaii%20character%20portrait%20{인물묘사_영문}?width=500&height=800&nologo=true
-5. JSON 구조 내 'choices'는 반드시 각 씬마다 2개씩 생성하세요.`;
-
-            try {
-              const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-              const response = await fetch(url, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: rawText }] }],
-                  systemInstruction: { parts: [{ text: systemInstruction }] },
-                  generationConfig: { responseMimeType: "application/json", temperature: 0.8 },
-                  safetySettings: [
-                    { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                    { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                    { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                    { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-                  ]
-                })
-              });
-
-              const data = await response.json();
-
-              // 에러 핸들링 강화
-              if (data.error) {
-                throw new Error(data.error.message || "API 요청 오류 발생");
-              }
-
-              if (!data.candidates || data.candidates.length === 0 || !data.candidates[0].content) {
-                // Safety 필터링에 걸렸을 때의 상세 메시지 확인
-                const reason = data.promptFeedback?.blockReason || data.candidates?.[0]?.finishReason || "Unknown Reason";
-                throw new Error(`AI가 내용을 처리할 수 없습니다. (사유: ${reason}). 텍스트를 조금 수정해 보세요.`);
-              }
-
-              const jsonText = data.candidates[0].content.parts[0].text.trim();
-              const parsedNovel = JSON.parse(jsonText);
-              
-              if (appendTargetId === "NEW") {
-                parsedNovel.id = 'novel_' + Date.now();
-                setNovelLibrary(prev => [parsedNovel, ...prev]);
-              } else {
-                setNovelLibrary(prev => {
-                  const lib = [...prev];
-                  const idx = lib.findIndex(n => n.id === appendTargetId);
-                  if (idx !== -1) {
-                    const target = {...lib[idx]};
-                    const newStage = {...parsedNovel.stages[0], id: 'st_'+Date.now(), isUnlocked: true};
-                    target.stages.push(newStage);
-                    target.scenes[newStage.id] = parsedNovel.scenes[Object.keys(parsedNovel.scenes)[0]];
-                    lib[idx] = target;
-                  }
-                  return lib;
-                });
-              }
-              setRawText(""); alert("게임 생성 완료!");
-            } catch (err) { 
-              console.error(err);
-              showError(err.message); 
-            } finally { 
-              setIsGenerating(false); 
-            }
-          };
-
-          const showError = (msg) => { setErrorMsg(msg); setTimeout(() => setErrorMsg(""), 5000); };
-          
-          const loadNovel = (novel) => {
-            setCurrentNovel(novel);
-            const initialUnlocks = {}; 
-            novel.stages.forEach(st => initialUnlocks[st.id] = st.isUnlocked);
-            setUnlockedStages(initialUnlocks);
-            const initialStats = {}; 
-            novel.meta.statsConfig.forEach(sc => initialStats[sc.key] = 0);
-            setStats(initialStats);
-            setAppState('HUB');
-          };
-
-          const startStage = (stageId) => {
-            setCurrentStageId(stageId);
-            const stageScenes = currentNovel.scenes[stageId];
-            setCurrentSceneId(currentNovel.stages.find(s=>s.id===stageId).firstScene || Object.keys(stageScenes)[0]);
-            setLineIndex(0); setAppState('PLAY');
-          };
-
-          const sceneData = (currentNovel && currentStageId && currentSceneId) ? currentNovel.scenes[currentStageId][currentSceneId] : null;
-
-          useEffect(() => {
-            if (appState !== 'PLAY' || !sceneData) return;
-            const line = sceneData.lines[lineIndex];
-            if (!line) return;
-            setIsTyping(true); setDisplayedText("");
-            let i = 0;
-            const timer = setInterval(() => {
-              if (i < line.text.length) { setDisplayedText(line.text.substring(0, i+1)); i++; }
-              else { clearInterval(timer); setIsTyping(false); }
-            }, 30);
-            return () => clearInterval(timer);
-          }, [currentSceneId, lineIndex, appState]);
-
-          const handleBoxClick = () => {
-            if (isTyping) { setDisplayedText(sceneData.lines[lineIndex].text); setIsTyping(false); return; }
-            if (lineIndex < sceneData.lines.length - 1) setLineIndex(prev => prev + 1);
-            else if (sceneData.nextScene) { setCurrentSceneId(sceneData.nextScene); setLineIndex(0); }
-          };
-
-          const isActionPoint = !isTyping && lineIndex === (sceneData?.lines?.length - 1) && (sceneData?.choices || sceneData?.endStage);
-
-          if (appState === 'LIBRARY') {
-            return (
-              <div className="fixed inset-0 w-full h-full bg-zinc-950 text-white overflow-y-auto custom-scrollbar">
-                {errorMsg && (
-                  <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-red-600 px-6 py-4 rounded-lg z-50 animate-fade-in-up font-bold shadow-2xl border border-white/20 text-center min-w-[300px]">
-                    ⚠️ 오류 발생<br/><span className="text-sm font-normal opacity-90">{errorMsg}</span>
-                  </div>
-                )}
-                <div className="max-w-4xl mx-auto py-10 px-6">
-                  <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-                    <h1 className="text-3xl font-black text-red-600 tracking-tighter">AI NOVEL ENGINE <span className="text-white text-sm">PRO</span></h1>
-                    <div className="flex items-center gap-2 bg-zinc-900 p-2 rounded border border-zinc-800">
-                      <span className="text-[10px] text-zinc-500 font-bold uppercase ml-2">API KEY</span>
-                      <input type="password" value={apiKey} onChange={(e)=>handleApiKeySave(e.target.value)} className="bg-black border border-zinc-700 text-xs p-1.5 rounded outline-none w-40 focus:border-red-600 transition-all"/>
-                    </div>
-                  </div>
-                  <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 shadow-2xl mb-12">
-                    <textarea value={rawText} onChange={(e)=>setRawText(e.target.value)} placeholder="소설 내용을 입력하세요. AI가 배경과 고퀄리티 캐릭터를 생성합니다." className="w-full h-48 bg-black border border-zinc-800 rounded-xl p-4 text-sm mb-4 outline-none focus:border-red-600 resize-none custom-scrollbar transition-all"/>
-                    <div className="flex gap-2">
-                        <select value={appendTargetId} onChange={(e)=>setAppendTargetId(e.target.value)} className="flex-1 bg-zinc-800 border border-zinc-700 p-3 rounded-lg text-xs font-bold outline-none">
-                          <option value="NEW">✨ 새로운 게임으로 만들기</option>
-                          {novelLibrary.map(n => <option key={n.id} value={n.id}>➕ {n.meta.title}에 누적</option>)}
-                        </select>
-                        <button onClick={handleAIGeneration} disabled={isGenerating} className="px-8 py-3 bg-red-700 hover:bg-red-600 rounded-lg font-black text-sm transition-all disabled:bg-zinc-800 flex items-center gap-2 shadow-lg active:scale-95">
-                          {isGenerating ? <><IconCpu className="animate-spin-slow" size={16}/> 분석 중...</> : "AI 변환 시작"}
-                        </button>
-                    </div>
-                  </div>
-                  <h2 className="text-xl font-black mb-6 flex items-center gap-2 tracking-widest"><IconLibrary size={20} className="text-red-600"/> MY NOVELS</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20">
-                    {novelLibrary.map(n => (
-                      <div key={n.id} onClick={()=>loadNovel(n)} className="relative h-64 rounded-2xl overflow-hidden border border-zinc-800 group cursor-pointer hover:border-red-600 transition-all shadow-xl">
-                        <div className="absolute inset-0 bg-cover bg-center group-hover:scale-105 transition-all duration-700" style={{backgroundImage: `url(${n.meta.coverBg})`}}/>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"/>
-                        <div className="absolute bottom-0 p-5 w-full">
-                          <div className="text-[10px] bg-red-700 inline-block px-2 py-0.5 mb-2 font-bold uppercase tracking-tighter">EPISODES: {n.stages.length}</div>
-                          <h3 className="text-2xl font-black leading-tight mb-1">{n.meta.title}</h3>
-                          <p className="text-xs text-zinc-400 opacity-80 truncate">{n.meta.description}</p>
-                        </div>
-                        <button onClick={(e)=>{e.stopPropagation(); if(confirm('삭제하시겠습니까?')) setNovelLibrary(prev=>prev.filter(x=>x.id!==n.id));}} className="absolute top-4 right-4 p-2 bg-black/50 hover:bg-red-600 rounded-full opacity-0 group-hover:opacity-100 transition-all shadow-lg"><IconTrash size={16}/></button>
-                      </div>
-                    ))}
-                    {novelLibrary.length === 0 && <div className="col-span-full py-20 text-center text-zinc-600 font-bold tracking-widest bg-zinc-900/30 rounded-2xl border-2 border-dashed border-zinc-800">라이브러리가 비어있습니다.</div>}
-                  </div>
-                </div>
-              </div>
-            );
-          }
-
-          if (appState === 'HUB') {
-            return (
-              <div className="fixed inset-0 w-full h-full bg-black text-white flex flex-col">
-                <div className="absolute inset-0 bg-cover bg-center opacity-40 blur-lg" style={{backgroundImage: `url(${currentNovel.meta.coverBg})`}}/>
-                <div className="relative z-10 p-6 border-b border-white/10 flex justify-between items-center backdrop-blur-xl bg-black/20">
-                   <button onClick={()=>setAppState('LIBRARY')} className="flex items-center gap-2 text-xs font-bold text-zinc-400 hover:text-white transition-colors group"><IconRotateCcw size={14} className="group-hover:rotate-[-45deg] transition-all"/> 라이브러리로</button>
-                   <div className="font-black text-red-600 tracking-widest text-lg">{currentNovel.meta.title}</div>
-                </div>
-                <div className="relative z-10 flex-1 overflow-y-auto p-10 flex flex-col items-center custom-scrollbar">
-                   <div className="w-full max-w-xl space-y-4">
-                      <h2 className="text-3xl font-black mb-10 text-center tracking-[0.2em] uppercase py-4 border-b-2 border-red-600/30">Select Episode</h2>
-                      {currentNovel.stages.map(st => (
-                        <button key={st.id} disabled={!unlockedStages[st.id]} onClick={()=>startStage(st.id)} className="w-full p-6 bg-zinc-900/80 border-l-4 border-red-600 rounded-xl flex justify-between items-center hover:bg-zinc-800 transition-all disabled:opacity-30 active:scale-[0.98] shadow-2xl">
-                           <div className="text-left">
-                             <div className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-1">{st.charName || 'Character'}</div>
-                             <div className="text-xl font-black">{st.title}</div>
-                           </div>
-                           <IconPlay size={20} className="text-red-600"/>
-                        </button>
-                      ))}
-                   </div>
-                </div>
-              </div>
-            );
-          }
-
-          if (appState === 'PLAY') {
-            return (
-              <div className="fixed inset-0 w-full h-full bg-black text-white overflow-hidden select-none">
-                <div className="absolute inset-0 bg-cover bg-center transition-all duration-1000 scale-105" style={{backgroundImage: `url(${sceneData.bg})`, filter: 'brightness(0.6)'}}/>
-                
-                <div className="absolute top-0 w-full p-6 flex justify-between items-start z-50 pointer-events-none">
-                  <div className="bg-black/80 px-5 py-2.5 border-l-4 border-red-600 backdrop-blur-md shadow-2xl">
-                    <div className="text-[10px] text-red-600 font-black uppercase tracking-widest">{currentNovel.meta.protagonist.pov}</div>
-                    <div className="text-xl font-black italic tracking-tight">{currentNovel.meta.protagonist.name}</div>
-                  </div>
-                </div>
-
-                <div className="absolute inset-0 flex justify-center items-end pb-32 pointer-events-none">
-                  {sceneData.character && (
-                    <div className="h-[90%] relative flex items-end">
-                      <img src={sceneData.character.charImage} className="h-full object-contain drop-shadow-[0_0_50px_rgba(0,0,0,0.9)] animate-fade-in-up" />
-                    </div>
-                  )}
-                </div>
-
-                <div className="absolute bottom-0 w-full p-4 md:p-10 max-w-6xl left-1/2 -translate-x-1/2 z-50">
-                  {isActionPoint && (
-                    <div className="grid gap-3 mb-6 animate-fade-in-up">
-                      {sceneData.choices?.map((c, i) => (
-                        <button key={i} onClick={()=>handleChoice(c)} className="w-full p-5 bg-zinc-900/95 border border-white/10 hover:border-red-600 text-left rounded-xl font-bold transition-all flex justify-between items-center group shadow-2xl backdrop-blur-md active:scale-[0.99]">
-                          <span className="text-sm md:text-lg">{c.text}</span> <IconChevronRight size={20} className="text-red-600 group-hover:translate-x-2 transition-all"/>
-                        </button>
-                      ))}
-                      {sceneData.endStage && <button onClick={()=>setAppState('HUB')} className="w-full p-5 bg-red-700 hover:bg-red-600 font-black rounded-xl uppercase tracking-widest shadow-2xl active:scale-[0.99]">에피소드 완료</button>}
-                    </div>
-                  )}
-
-                  <div onClick={handleBoxClick} className="w-full h-44 md:h-52 bg-zinc-950/90 border-2 border-white/10 p-8 md:p-10 relative cursor-pointer rounded-2xl backdrop-blur-md shadow-[0_0_40px_rgba(0,0,0,0.5)]">
-                    <div className="absolute -top-5 left-8 px-8 py-1.5 bg-red-700 font-black skew-x-[-15deg] shadow-2xl border-r-4 border-white/30">
-                      <span className="block skew-x-[15deg] text-lg tracking-wide">{sceneData.lines[lineIndex]?.speaker || '???'}</span>
-                    </div>
-                    <div className="text-lg md:text-2xl leading-relaxed text-zinc-100 overflow-y-auto h-full custom-scrollbar font-medium">
-                      {displayedText}
-                    </div>
-                    {!isTyping && !isActionPoint && <div className="absolute bottom-6 right-8 animate-bounce text-red-600"><IconChevronRight size={28}/></div>}
-                  </div>
-                </div>
-              </div>
-            );
-          }
-          return null;
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+const apiKey = "";
+// ==========================================
+// [SVG 아이콘]
+// ==========================================
+const IconChevronRight = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>;
+const IconShieldAlert = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+const IconRotateCcw = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg>;
+const IconBriefcase = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>;
+const IconUser = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
+const IconBookOpen = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
+const IconFlame = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>;
+const IconDroplets = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7 2.9 7 2.9s-2.29 6.16-2.29 6.16c-1.14.93-1.71 2.03-1.71 3.19C3 14.47 4.8 16.3 7 16.3z"/><path d="M20.5 10.4c1.14.93 1.71 2.03 1.71 3.19 0 2.22-1.8 4.05-4 4.05s-4-1.83-4-4.05c0-1.16.57-2.26 1.71-3.19.01 0 2.29-6.16 2.29-6.16s2.28 6.16 2.29 6.16z"/></svg>;
+const IconLibrary = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>;
+const IconPlay = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
+const IconCpu = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>;
+const IconUploadCloud = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/><polyline points="16 16 12 12 8 16"/></svg>;
+const IconLock = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
+const IconScissors = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>;
+async function fetchWithRetry(url, options, retries = 5) {
+const delays = [1000, 2000, 4000, 8000, 16000];
+for (let i = 0; i < retries; i++) {
+try {
+const res = await fetch(url, options);
+if (!res.ok) throw new Error(HTTP error! status: ${res.status});
+return res;
+} catch (err) {
+if (i === retries - 1) throw err;
+await new Promise(r => setTimeout(r, delays[i]));
+}
+}
+}
+window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
+const chunkText = (text, maxLength = 2000) => {
+const paragraphs = text.split('\n');
+const chunks = [];
+let currentChunk = "";
+for(let p of paragraphs) {
+if(currentChunk.length + p.length > maxLength) {
+if(currentChunk.trim()) chunks.push(currentChunk.trim());
+currentChunk = p + '\n';
+} else {
+currentChunk += p + '\n';
+}
+}
+if(currentChunk.trim()) chunks.push(currentChunk.trim());
+return chunks;
+};
+const App = () => {
+const [appState, setAppState] = useState('LIBRARY');
+const [novelLibrary, setNovelLibrary] = useState([]);
+const [currentNovel, setCurrentNovel] = useState(null);
+const [unlockedStages, setUnlockedStages] = useState({});
+const [stats, setStats] = useState({});
+const [currentStageId, setCurrentStageId] = useState(null);
+const [currentSceneId, setCurrentSceneId] = useState(null);
+const [lineIndex, setLineIndex] = useState(0);
+const [displayedText, setDisplayedText] = useState("");
+const [isTyping, setIsTyping] = useState(false);
+const [rawText, setRawText] = useState("");
+const [isGenerating, setIsGenerating] = useState(false);
+const [errorMsg, setErrorMsg] = useState("");
+const [textChunks, setTextChunks] = useState([]);
+const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
+const [appendTargetId, setAppendTargetId] = useState("NEW");
+const scrollRef = useRef(null);
+const processLoadedText = (fullText) => {
+const chunks = chunkText(fullText, 2000);
+if(chunks.length > 1) {
+setTextChunks(chunks);
+setCurrentChunkIndex(0);
+setRawText(chunks[0]);
+alert(문서가 안전하게 ${chunks.length}개의 파트로 자동 분할되었습니다!);
+} else {
+setTextChunks([]);
+setCurrentChunkIndex(0);
+setRawText(fullText);
+}
+};
+const handleFileUpload = (event) => {
+const file = event.target.files[0];
+if (!file) return;
+const ext = file.name.split('.').pop().toLowerCase();
+setIsGenerating(true);
+if (ext === 'json') {
+const reader = new FileReader();
+reader.onload = (e) => {
+try {
+const parsedData = JSON.parse(e.target.result);
+const newData = Array.isArray(parsedData) ? parsedData : [parsedData];
+setNovelLibrary(prev => [...newData, ...prev]);
+loadNovel(newData[0]);
+} catch (error) {
+showError("JSON 파싱 에러: 파일 형식을 확인해주세요.");
+} finally {
+setIsGenerating(false);
+}
+};
+reader.readAsText(file);
+} else if (ext === 'txt') {
+const reader = new FileReader();
+reader.onload = (e) => {
+processLoadedText(e.target.result);
+setIsGenerating(false);
+};
+reader.readAsText(file);
+} else if (ext === 'docx') {
+const reader = new FileReader();
+reader.onload = async (e) => {
+try {
+const result = await mammoth.extractRawText({arrayBuffer: e.target.result});
+processLoadedText(result.value);
+} catch(err) {
+showError("DOCX 추출에 실패했습니다.");
+} finally {
+setIsGenerating(false);
+}
+};
+reader.readAsArrayBuffer(file);
+} else if (ext === 'pdf') {
+const reader = new FileReader();
+reader.onload = async (e) => {
+try {
+const typedarray = new Uint8Array(e.target.result);
+const pdf = await pdfjsLib.getDocument(typedarray).promise;
+let text = "";
+for (let i = 1; i <= pdf.numPages; i++) {
+const page = await pdf.getPage(i);
+const textContent = await page.getTextContent();
+const pageText = textContent.items.map(item => item.str).join(' ');
+text += pageText + "\n";
+}
+processLoadedText(text);
+} catch(err) {
+showError("PDF 추출에 실패했습니다.");
+} finally {
+setIsGenerating(false);
+}
+};
+reader.readAsArrayBuffer(file);
+}
+event.target.value = null;
+};
+const handleManualSplit = () => {
+const chunks = chunkText(rawText, 2000);
+if(chunks.length > 1) {
+setTextChunks(chunks);
+setCurrentChunkIndex(0);
+setRawText(chunks[0]);
+alert(텍스트가 성공적으로 ${chunks.length}개의 파트로 분할되었습니다.);
+} else {
+alert("분할할 만큼 텍스트가 길지 않습니다. (현재 1개 파트로 충분함)");
+}
+};
+// --------------------------------------------------------
+// [AI 이미지 자동 생성 패치] Pollinations.ai 연동
+// --------------------------------------------------------
+const handleAIGeneration = async () => {
+if (!rawText.trim()) {
+showError("텍스트를 입력해주세요.");
+return;
+}
+setIsGenerating(true);
+setErrorMsg("");
+const systemInstruction = `당신은 비주얼 노벨 게임 엔진의 완벽한 텍스트 파서입니다.
+[가장 중요한 치명적 절대 규칙]
+ 1. 각 씬의 "choices" 배열은 **무조건 정확히 2개의 객체**를 가져야 합니다.
+ 2. 이야기의 가장 마지막 씬에만 "endStage": true를 넣고 choices를 비우세요.
+ 3. [이미지 생성 규칙] "bg"(배경)와 "charImage"(캐릭터) 필드에 들어갈 이미지 URL을 반드시 다음 양식으로 생성하세요.
+   * 배경 (bg) URL 형식: https://image.pollinations.ai/prompt/anime%20visual%20novel%20background%20{배경_영문_묘사}?width=1280&height=720&nologo=true
+     * {배경_영문_묘사}는 텍스트 내용을 기반으로 구체적이고 아름다운 영어 단어 조합으로 작성하세요. (예: luxury%20office%20room%20night)
+   * 캐릭터 (charImage) URL 형식: https://image.pollinations.ai/prompt/anime%20visual%20novel%20character%20portrait%20{캐릭터_영문_외모_묘사}?width=500&height=700&nologo=true
+     * {캐릭터_영문_외모_묘사}는 **텍스트 내용이나 분위기와는 무관하게**, 오직 일반적이고 아름다운 캐릭터의 외모를 묘사하는 영어 단어 조합으로 채우세요. (예: beautiful%20girl%20smiling%20long%20hair%20blue%20eyes)
+   * **중요:** URL 안에 띄어쓰기가 있으면 절대 안 됩니다. 단어 사이는 무조건 '%20'으로 치환하세요. URL 안에 띄어쓰기가 있으면 절대 안 됩니다.
+ 4. 출력은 오직 순수한 JSON 형식이어야 합니다. 마크다운(```json) 금지.
+[JSON 포맷 구조 예시]
+{
+"id": "novel_auto",
+"meta": {
+"title": "자동 생성 스토리",
+"author": "AI",
+"coverBg": "https://image.pollinations.ai/prompt/anime%20visual%20novel%20cover%20dark%20romance?width=1280&height=720&nologo=true",
+"description": "사용자 입력 원문 무삭제 진행본",
+"protagonist": { "name": "주인공", "role": "역할", "pov": "Player POV" },
+"statsConfig": [
+{ "key": "desire", "label": "Desire", "color": "red" }
+]
+},
+"stages": [
+{ "id": "stage_1", "title": "에피소드 제목", "charName": "상대방", "role": "역할", "color": "from-red-600", "isUnlocked": true, "firstScene": "scene1" }
+],
+"scenes": {
+"stage_1": {
+"scene1": {
+"bg": "https://image.pollinations.ai/prompt/anime%20visual%20novel%20background%20dark%20office%20night%20rain?width=1280&height=720&nologo=true",
+"character": {
+"name": "상대방",
+"role": "역할",
+"color": "from-red-600",
+"charImage": "https://image.pollinations.ai/prompt/anime%20visual%20novel%20character%20portrait%20beautiful%20girl%20smiling%20long%20hair%20blue%20eyes?width=500&height=700&nologo=true"
+},
+"lines": [ { "speaker": "주인공", "text": "원문 문장..." } ],
+"choices": [
+{ "text": "[선택1]", "next": "scene2", "impact": { "desire": 10 } },
+{ "text": "[선택2]", "next": "scene1_recovery", "impact": { "desire": 5 } }
+]
+},
+"scene1_recovery": {
+"bg": "https://image.pollinations.ai/prompt/anime%20visual%20novel%20background%20dimly%20lit%20room?width=1280&height=720&nologo=true",
+"lines": [ { "speaker": "상대방", "text": "회복 씬 내용..." } ],
+"choices": [
+{ "text": "[진행]", "next": "scene2", "impact": { "desire": 5 } },
+{ "text": "[도발]", "next": "scene2", "impact": { "desire": 10 } }
+]
+},
+"scene2": {
+"bg": "https://image.pollinations.ai/prompt/anime%20visual%20novel%20background%20hotel%20room%20bed?width=1280&height=720&nologo=true",
+"lines": [ { "speaker": "주인공", "text": "마지막 결말..." } ],
+"endStage": true
+}
+}
+}
+}`;
+try {
+const url = https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey};
+const payload = {
+contents: [{ parts: [{ text: rawText }] }],
+systemInstruction: { parts: [{ text: systemInstruction }] },
+generationConfig: { responseMimeType: "application/json" }
+};
+const response = await fetchWithRetry(url, {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify(payload)
+});
+const data = await response.json();
+if (!data.candidates || data.candidates.length === 0 || !data.candidates[0].content) {
+throw new Error("AI 응답이 차단되었거나 비어있습니다.");
+}
+let jsonText = data.candidates[0].content.parts[0].text;
+jsonText = jsonText.replace(/json/g, '').replace(//g, '').trim();
+let parsedNovel;
+try {
+parsedNovel = JSON.parse(jsonText);
+} catch (parseError) {
+throw new Error("생성된 데이터 구조가 끊어졌습니다. 텍스트 분할이 필요합니다.");
+}
+let createdNovelId = "";
+if (appendTargetId === "NEW") {
+parsedNovel.id = 'novel_' + Date.now();
+createdNovelId = parsedNovel.id;
+let stTitle = parsedNovel.stages[0].title.replace(/[\d+화]\s*/g, '');
+parsedNovel.stages[0].title = [1화] ${stTitle};
+setNovelLibrary(prev => [parsedNovel, ...prev]);
+} else {
+createdNovelId = appendTargetId;
+setNovelLibrary(prev => {
+const updatedLibrary = [...prev];
+const targetIndex = updatedLibrary.findIndex(n => n.id === appendTargetId);
+if (targetIndex !== -1) {
+const targetNovel = JSON.parse(JSON.stringify(updatedLibrary[targetIndex]));
+const newStageId = 'stage_' + Date.now();
+const oldStageId = parsedNovel.stages[0].id;
+const newStage = { ...parsedNovel.stages[0], id: newStageId };
+newStage.isUnlocked = true;
+let stTitle = newStage.title.replace(/[\d+화]\s*/g, '');
+newStage.title = [${targetNovel.stages.length + 1}화] ${stTitle};
+targetNovel.stages.push(newStage);
+targetNovel.scenes[newStageId] = parsedNovel.scenes[oldStageId];
+updatedLibrary[targetIndex] = targetNovel;
+return updatedLibrary;
+}
+return prev;
+});
+}
+setTimeout(() => {
+if (textChunks.length > 0 && currentChunkIndex < textChunks.length - 1) {
+const nextIdx = currentChunkIndex + 1;
+setCurrentChunkIndex(nextIdx);
+setRawText(textChunks[nextIdx]);
+setAppendTargetId(createdNovelId);
+alert([파트 ${currentChunkIndex + 1}/${textChunks.length}] 변환 성공! 다음 파트가 자동으로 로드되었습니다.);
+} else {
+setRawText("");
+setTextChunks([]);
+setCurrentChunkIndex(0);
+const targetNovelToLoad = novelLibrary.find(n => n.id === createdNovelId) || parsedNovel;
+alert(모든 변환이 완료되었습니다! 생성된 게임을 실행합니다.);
+setNovelLibrary(currentLib => {
+const finalNovel = currentLib.find(n => n.id === createdNovelId) || parsedNovel;
+loadNovel(finalNovel);
+return currentLib;
+});
+}
+}, 100);
+} catch (err) {
+console.error(err);
+let detailMsg = "텍스트가 너무 길거나 응답 구조 오류입니다.";
+if (err.message) detailMsg = err.message;
+showError(변환 실패: ${detailMsg});
+} finally {
+setIsGenerating(false);
+}
+};
+const showError = (msg) => {
+setErrorMsg(msg);
+setTimeout(() => setErrorMsg(""), 4000);
+};
+const loadNovel = (novel) => {
+setCurrentNovel(novel);
+const initialUnlocks = {};
+novel.stages.forEach(st => initialUnlocks[st.id] = st.isUnlocked);
+setUnlockedStages(initialUnlocks);
+const initialStats = {};
+novel.meta.statsConfig.forEach(sc => initialStats[sc.key] = 0);
+setStats(initialStats);
+setAppState('HUB');
+};
+const startStage = (stageId) => {
+const stageInfo = currentNovel.stages.find(s => s.id === stageId);
+setCurrentStageId(stageId);
+setCurrentSceneId(stageInfo.firstScene);
+setLineIndex(0);
+setAppState('PLAY');
+};
+const sceneData = (currentNovel && currentStageId && currentSceneId)
+? currentNovel.scenes[currentStageId][currentSceneId]
+: null;
+const currentStageIndex = currentNovel?.stages.findIndex(s => s.id === currentStageId);
+const hasNextStage = currentNovel && currentStageIndex !== -1 && currentStageIndex < currentNovel.stages.length - 1;
+const nextStage = hasNextStage ? currentNovel.stages[currentStageIndex + 1] : null;
+useEffect(() => {
+if (appState !== 'PLAY' || !sceneData) return;
+const currentLine = sceneData.lines[lineIndex];
+if (!currentLine) return;
+setIsTyping(true);
+setDisplayedText("");
+let i = 0;
+const typingInterval = setInterval(() => {
+if (i < currentLine.text.length) {
+setDisplayedText(currentLine.text.substring(0, i + 1));
+i++;
+} else {
+clearInterval(typingInterval);
+setIsTyping(false);
+}
+}, 20);
+return () => clearInterval(typingInterval);
+}, [currentSceneId, lineIndex, appState, sceneData]);
+useEffect(() => {
+if (scrollRef.current) scrollRef.current.scrollTop = 0;
+}, [currentSceneId, lineIndex]);
+const handleBoxClick = () => {
+if (appState !== 'PLAY' || !sceneData) return;
+const currentLine = sceneData.lines[lineIndex];
+if (isTyping) {
+setDisplayedText(currentLine.text);
+setIsTyping(false);
+} else {
+if (lineIndex < sceneData.lines.length - 1) {
+setLineIndex(prev => prev + 1);
+} else if (sceneData.nextScene) {
+setCurrentSceneId(sceneData.nextScene);
+setLineIndex(0);
+}
+}
+};
+const handleChoice = (choice) => {
+if (choice.impact) {
+const newStats = { ...stats };
+Object.keys(choice.impact).forEach(k => {
+if(newStats[k] !== undefined) newStats[k] += choice.impact[k];
+});
+setStats(newStats);
+}
+setCurrentSceneId(choice.next);
+setLineIndex(0);
+};
+const handleStageEnd = () => {
+if (sceneData.unlocks) {
+setUnlockedStages(prev => ({...prev, [sceneData.unlocks]: true}));
+}
+setAppState('HUB');
+};
+const getStageIcon = (iconStr) => {
+switch(iconStr) {
+case 'Briefcase': return <IconBriefcase size={20} />;
+case 'User': return <IconUser size={20} />;
+case 'ShieldAlert': return <IconShieldAlert size={20} />;
+case 'BookOpen': return <IconBookOpen size={20} />;
+case 'Flame': return <IconFlame size={20} />;
+default: return <IconDroplets size={20} />;
+}
+};
+const showActionArea = !isTyping && sceneData?.lines && lineIndex === sceneData.lines.length - 1 && (sceneData?.choices || sceneData?.endStage);
+if (appState === 'LIBRARY') {
+return (
+<div className="fixed inset-0 w-full h-full bg-zinc-950 text-white flex flex-col overflow-y-auto">
+{errorMsg && (
+<div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-red-600 text-white px-6 py-3 rounded-md shadow-2xl z-50 font-bold animate-fade-in-up">
+{errorMsg}
+</div>
+)}
+<div className="max-w-5xl mx-auto w-full pt-10 px-4 md:px-6 pb-12">
+<div className="flex items-center gap-3 mb-6">
+<IconLibrary size={32} className="text-red-500 shrink-0" />
+<h1 className="text-2xl md:text-4xl font-black uppercase tracking-widest break-keep">AI Novel Engine</h1>
+</div>
+<p className="text-zinc-400 mb-10 text-sm md:text-base break-keep">
+PDF, DOCX, TXT 문서를 업로드하세요. 엔진이 스토리를 분석하여 배경과 캐릭터 일러스트까지 실시간으로 생성해 줍니다!
+</p>
+<div className="mb-10 bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden shadow-2xl flex flex-col">
+<div className="bg-zinc-800 p-4 border-b border-zinc-700 flex flex-wrap items-center justify-between gap-3">
+<div className="flex items-center gap-2 font-bold text-red-400">
+<IconCpu size={20} /> AI 자동 분할 & 일러스트 생성 변환기
+</div>
+<div className="flex gap-2">
+<button onClick={handleManualSplit} className="flex items-center gap-1 text-xs md:text-sm text-zinc-300 hover:text-white bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded-md transition-colors shadow-lg">
+<IconScissors size={16} /> 텍스트 수동 쪼개기
+</button>
+<div className="relative overflow-hidden cursor-pointer group flex items-center gap-1 text-xs md:text-sm text-zinc-300 hover:text-white bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded-md transition-colors shadow-lg">
+<input type="file" accept="*/*" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+<IconUploadCloud size={16} /> 문서 가져오기
+</div>
+</div>
+</div>
+<div className="p-4 md:p-6">
+{textChunks.length > 1 && (
+<div className="mb-4 bg-red-900/30 border border-red-800 text-red-200 p-3 rounded-md text-sm md:text-base font-bold flex items-center justify-between">
+<span>[자동 분할 진행 중] 일러스트 생성 최적화를 위해 나뉘어 변환됩니다.</span>
+<span className="bg-red-700 text-white px-3 py-1 rounded-full shrink-0 ml-2">현재 {currentChunkIndex + 1} / {textChunks.length} 파트</span>
+</div>
+)}
+<textarea
+value={rawText}
+onChange={(e) => setRawText(e.target.value)}
+placeholder="이곳에 소설 내용을 붙여넣거나 [문서 가져오기]로 파일을 업로드하세요. AI가 상황에 맞는 고퀄리티 배경과 캐릭터를 스스로 그립니다."
+className="w-full h-[200px] md:h-[250px] bg-black/50 border border-zinc-700 rounded-lg p-4 text-zinc-300 text-sm md:text-base focus:outline-none focus:border-red-500 custom-scrollbar resize-none mb-4"
+disabled={isGenerating || textChunks.length > 1}
+/>
+<div className="flex flex-col md:flex-row items-start md:items-center gap-3 mb-4 bg-zinc-800/50 p-3 rounded-md border border-zinc-700/50">
+<span className="text-sm font-bold text-zinc-400 shrink-0">저장 방식:</span>
+<select
+value={appendTargetId}
+onChange={(e) => setAppendTargetId(e.target.value)}
+disabled={textChunks.length > 1 && currentChunkIndex > 0}
+className="flex-grow bg-zinc-900 border border-zinc-600 text-white text-sm rounded-md p-2 outline-none focus:border-red-500 cursor-pointer disabled:opacity-50"
+>
+<option value="NEW">✨ 새로운 게임으로 생성 (1화)</option>
+{novelLibrary.map(n => (
+<option key={n.id} value={n.id}>➕ 기존 게임에 에피소드 누적하기 ({n.meta.title} - 현재 {n.stages.length}화)</option>
+))}
+</select>
+</div>
+<button
+onClick={handleAIGeneration}
+disabled={isGenerating}
+className={w-full py-4 font-black text-lg md:text-xl tracking-widest uppercase transition-all rounded-md flex items-center justify-center gap-3 ${isGenerating ? 'bg-zinc-700 text-zinc-400 cursor-not-allowed' : 'bg-red-700 hover:bg-red-600 text-white shadow-lg'}}
+>
+{isGenerating ? (
+<><IconCpu size={24} className="animate-spin-slow" /> 파싱 및 AI 이미지 생성 중...</>
+) : (
+<><IconPlay size={24} /> 텍스트를 게임으로 변환하기</>
+)}
+</button>
+</div>
+</div>
+<h3 className="text-xl font-black uppercase tracking-widest mb-4 border-b border-zinc-800 pb-2">Generated Novels</h3>
+{novelLibrary.length === 0 ? (
+<div className="text-center py-10 text-zinc-600 font-bold tracking-widest">생성된 게임이 없습니다.</div>
+) : (
+<div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+{novelLibrary.map((novel, idx) => (
+<div key={idx} onClick={() => loadNovel(novel)} className="group relative h-[250px] md:h-[300px] rounded-xl overflow-hidden cursor-pointer shadow-xl border border-white/10 hover:border-red-500 transition-all">
+<div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{ backgroundImage: url(${novel.meta.coverBg}), filter: 'brightness(0.4)' }} />
+<div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+<div className="absolute bottom-0 left-0 p-5 w-full">
+<span className="bg-red-700 text-white px-2 py-1 font-black text-[10px] uppercase tracking-widest mb-2 inline-block shadow-lg">POV: {novel.meta.protagonist.name}</span>
+<span className="bg-purple-700 text-white px-2 py-1 font-black text-[10px] uppercase tracking-widest mb-2 ml-2 inline-block shadow-lg">총 {novel.stages.length}화</span>
+<h2 className="text-xl md:text-2xl font-black mb-1 leading-tight">{novel.meta.title}</h2>
+<p className="text-zinc-400 text-xs md:text-sm mb-3 line-clamp-2">{novel.meta.description}</p>
+<div className="flex items-center text-red-400 font-bold text-sm group-hover:text-white transition-colors">
+<IconPlay size={16} className="mr-1" /> PLAY
+</div>
+</div>
+</div>
+))}
+</div>
+)}
+</div>
+</div>
+);
+}
+if (appState === 'HUB') {
+return (
+<div className="fixed inset-0 w-full h-full bg-black text-white flex flex-col">
+<div className="absolute inset-0 bg-cover bg-center opacity-30" style={{ backgroundImage: url(${currentNovel.meta.coverBg}) }} />
+<div className="absolute inset-0 bg-black/80 backdrop-blur-md" />
+<div className="relative z-10 p-4 md:p-6 flex items-center justify-between border-b border-white/10">
+<button onClick={() => setAppState('LIBRARY')} className="flex items-center text-zinc-400 hover:text-white font-bold transition-colors text-sm md:text-base">
+<IconRotateCcw size={16} className="mr-2"/> 돌아가기
+</button>
+<div className="text-sm md:text-lg font-black tracking-widest uppercase text-red-500">{currentNovel.meta.title}</div>
+</div>
+<div className="relative z-10 flex flex-col items-center pt-8 pb-12 px-4 overflow-y-auto flex-1 custom-scrollbar">
+<h2 className="text-2xl md:text-4xl font-black text-white mb-2 tracking-[0.2em] uppercase text-center">Stage Selection</h2>
+<div className="flex flex-col gap-3 md:gap-4 w-full max-w-2xl pb-10">
+{currentNovel.stages.map((st) => (
+<button key={st.id} disabled={!unlockedStages[st.id]} onClick={() => startStage(st.id)} className={p-4 md:p-6 border-l-4 bg-zinc-900/80 transition-all text-left flex items-center justify-between group rounded-sm ${unlockedStages[st.id] ? border-${st.color.replace('text-', '')} hover:bg-zinc-800 active:scale-[0.98] shadow-lg : 'border-zinc-800 opacity-40 cursor-not-allowed'}}>
+<div className="flex items-center gap-3 md:gap-4">
+<div className={p-2 md:p-3 bg-black rounded-full shrink-0 ${unlockedStages[st.id] ? st.color : 'text-zinc-600'}}>
+{getStageIcon(st.icon)}
+</div>
+<div>
+<span className="text-[10px] md:text-xs text-zinc-400 font-bold tracking-widest uppercase mb-1 block">{st.charName} ({st.role})</span>
+<span className="text-base md:text-2xl font-black text-white">{st.title}</span>
+</div>
+</div>
+{unlockedStages[st.id] ? <IconPlay size={20} className={${st.color} group-hover:translate-x-2 transition-transform} /> : <IconLock size={20} className="text-zinc-600" />}
+</button>
+))}
+</div>
+</div>
+</div>
+);
+}
+// [디버깅] 백그라운드 이미지 로딩용 컴포넌트
+return (
+<div className="fixed inset-0 w-full flex flex-col bg-black text-white font-sans select-none overflow-hidden">
+<div className="absolute inset-0 pointer-events-none z-0">
+<div className="absolute inset-0 bg-cover bg-center transition-all duration-700 ease-in-out scale-105" style={{ backgroundImage: url(${sceneData.bg}), filter: 'brightness(0.4) contrast(1.1)' }} />
+<div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+</div>
+<div className="relative z-40 w-full px-2 pt-2 md:px-6 md:pt-6 shrink-0 pointer-events-none flex justify-between items-start gap-2">
+<div className="bg-zinc-950/90 backdrop-blur-md px-3 py-2 md:px-4 md:py-3 border-l-4 border-red-600 shadow-lg shrink-0">
+<span className="text-[8px] md:text-[10px] text-red-500 font-black tracking-widest block mb-0.5">{currentNovel.meta.protagonist.pov}</span>
+<span className="text-sm md:text-xl font-serif font-bold italic">{currentNovel.meta.protagonist.name}</span>
+</div>
+<div className="flex gap-1 md:gap-2 flex-wrap justify-end">
+{currentNovel.meta.statsConfig.map((sc, i) => (
+<div key={i} className={bg-zinc-950/90 backdrop-blur-md px-2 py-2 md:px-4 md:py-3 border-b-2 border-${sc.color}-600 text-center min-w-[50px] md:min-w-[80px] shadow-lg}>
+<div className={text-[7px] md:text-[9px] text-${sc.color}-500 font-black uppercase mb-0.5}>{sc.label}</div>
+<div className="text-xs md:text-lg font-black tabular-nums">{stats[sc.key]}</div>
+</div>
+))}
+</div>
+</div>
+<div className="relative z-10 flex-1 min-h-0 flex justify-center items-end pointer-events-none px-4">
+{sceneData.character && (
+<div className="relative animate-fade-in-up w-full max-w-[280px] md:max-w-[400px] aspect-[2/3] max-h-full">
+{/* 실시간 AI 캐릭터 생성 이미지 렌더링 부 */}
+{sceneData.character.charImage ? (
+<div className="absolute inset-0 overflow-hidden rounded-t-full shadow-[0_0_40px_rgba(0,0,0,0.9)] border-x border-t border-white/20">
+<img 
+src={sceneData.character.charImage} 
+alt="character" 
+className="w-full h-full object-cover object-top opacity-90 transition-opacity duration-1000"
+/>
+<div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
+</div>
+) : (
+<div className={absolute inset-0 bg-gradient-to-t ${sceneData.character.color} to-transparent opacity-30 rounded-t-full blur-xl} />
+)}
+<div className="absolute bottom-0 left-0 w-full pt-16 pb-6 flex flex-col items-center bg-gradient-to-t from-black via-black/80 to-transparent">
+<span className="text-white/30 text-2xl md:text-4xl font-black tracking-tighter">TARGET</span>
+<span className={bg-${sceneData.character.color.replace('text-', '').replace('from-', '')} text-white px-4 py-1 font-black skew-x-[-10deg] text-sm md:text-lg uppercase mt-1 shadow-lg}>
+{sceneData.character.name}
+</span>
+</div>
+</div>
+)}
+</div>
+<div className="relative z-40 w-full shrink-0 px-2 pb-4 md:px-6 md:pb-8 pt-2 pointer-events-auto h-[340px] md:h-[380px] flex flex-col justify-end max-w-4xl mx-auto">
+<div className="h-[120px] w-full flex flex-col justify-end gap-2 mb-3">
+{showActionArea && sceneData.choices && (
+<div className="flex flex-col gap-2 animate-fade-in-up w-full">
+{sceneData.choices.map((c, i) => (
+<button key={i} onClick={(e) => { e.stopPropagation(); handleChoice(c); }} className="w-full p-3 md:p-4 bg-zinc-900/95 border border-white/20 hover:border-red-500 active:bg-red-900/40 transition-colors text-left flex items-center justify-between shadow-lg rounded-sm group">
+<span className="text-zinc-200 font-bold text-sm md:text-base leading-snug break-keep pr-2 group-hover:text-white transition-colors">{c.text}</span>
+<IconChevronRight size={18} className="text-red-600 shrink-0 group-hover:translate-x-1 transition-transform" />
+</button>
+))}
+</div>
+)}
+{showActionArea && sceneData.endStage && (
+<div className="flex flex-col gap-2 animate-fade-in-up w-full">
+{hasNextStage ? (
+<button onClick={() => startStage(nextStage.id)} className="w-full p-3 md:p-4 bg-purple-700 hover:bg-purple-600 font-black text-center uppercase tracking-widest transition-colors shadow-lg rounded-sm text-sm md:text-base">
+다음 에피소드 계속하기 ({nextStage.title})
+</button>
+) : (
+<div className="w-full p-3 md:p-4 bg-zinc-800 text-zinc-400 font-bold text-center tracking-widest rounded-sm text-sm md:text-base border border-zinc-700">
+현재 연재된 마지막 에피소드입니다.
+</div>
+)}
+<button onClick={handleStageEnd} className="w-full p-3 md:p-4 bg-zinc-900 border border-zinc-700 hover:bg-zinc-800 font-black text-center uppercase tracking-widest transition-colors shadow-lg rounded-sm text-sm md:text-base text-zinc-300">
+허브로 돌아가기
+</button>
+</div>
+)}
+</div>
+<div className="h-[32px] md:h-[36px] mb-[-4px] z-10 w-full pl-2 md:pl-0">
+{sceneData.lines && sceneData.lines[lineIndex] && (
+<div className="inline-block bg-red-700 text-white px-4 py-1 md:px-5 md:py-1.5 font-black text-sm md:text-lg skew-x-[-10deg] border-r-4 border-white shadow-lg">
+<span className="skew-x-[10deg] block tracking-wide">{sceneData.lines[lineIndex].speaker}</span>
+</div>
+)}
+</div>
+<div onClick={handleBoxClick} className="bg-zinc-950/95 border-2 border-white/20 p-4 md:p-8 shadow-2xl relative flex flex-col h-[150px] md:h-[180px] w-full shrink-0 cursor-pointer rounded-sm">
+<div className="absolute top-0 right-0 w-12 h-12 bg-red-600/10 rounded-bl-full pointer-events-none" />
+<div ref={scrollRef} className="text-[15px] md:text-xl font-medium leading-[1.7] md:leading-[1.9] text-zinc-100 flex-grow break-keep mb-2 overflow-y-auto custom-scrollbar pr-2">
+{displayedText}
+</div>
+{!isTyping && (!sceneData.choices && !sceneData.endStage && lineIndex < sceneData.lines.length - 1) && (
+<div className="absolute bottom-4 right-4 animate-bounce"><IconChevronRight size={20} className="text-red-500" /></div>
+)}
+</div>
+</div>
+</div>
+);
+};
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(<App />);
+</script>
 </body>
 </html>
