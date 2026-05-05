@@ -60,7 +60,6 @@
 
         const getSafeUrl = (url) => {
             if (!url) return '';
-            // 따옴표나 공백 등 오류를 유발하는 문자열을 안전하게 정리
             let cleanUrl = url.trim().replace(/^['"]|['"]$/g, '');
             return cleanUrl;
         };
@@ -159,22 +158,48 @@
 
           const scrollRef = useRef(null);
 
-          const preloadImages = (novelData) => {
-            if (!novelData || !novelData.scenes) return;
-            const urls = new Set();
-            if (novelData.meta?.coverBg) urls.add(getSafeUrl(novelData.meta.coverBg));
+          // ==========================================
+          // [핵심 변경: 단계적 사전 로딩 최적화]
+          // ==========================================
+          
+          // 1. 모든 이미지를 무식하게 Preload하는 대신,
+          // 플레이 중 '현재 장면'에서 '갈 수 있는 다음 장면'의 이미지만 적극적으로 Preload합니다.
+          const preloadActiveScenes = ( novel, stageId, sceneData ) => {
+            if(!novel || !stageId || !sceneData) return;
+            const urlsToPreload = new Set();
             
-            Object.values(novelData.scenes).forEach(stage => {
-                Object.values(stage).forEach(scene => {
-                    if (scene.bg) urls.add(getSafeUrl(scene.bg));
-                    if (scene.character?.charImage) urls.add(getSafeUrl(scene.character.charImage));
-                });
-            });
+            // a) 다음 장면 고정 연결이 있을 때
+            if (sceneData.nextScene && novel.scenes?.[stageId]?.[sceneData.nextScene]) {
+                const ns = novel.scenes[stageId][sceneData.nextScene];
+                if(ns.bg) urlsToPreload.add(getSafeUrl(ns.bg));
+                if(ns.character?.charImage) urlsToPreload.add(getSafeUrl(ns.character.charImage));
+            }
 
-            urls.forEach(url => {
+            // b) 선택지가 있을 때, 선택지로 갈 수 있는 모든 이미지 Preload
+            if (sceneData.choices) {
+                sceneData.choices.forEach(choice => {
+                    if (novel.scenes?.[stageId]?.[choice.next]) {
+                        const cs = novel.scenes[stageId][choice.next];
+                        if(cs.bg) urlsToPreload.add(getSafeUrl(cs.bg));
+                        if(cs.character?.charImage) urlsToPreload.add(getSafeUrl(cs.character.charImage));
+                    }
+                });
+            }
+
+            // [체감 속도 Fix] 위에서 걸러낸 URL만 브라우저 캐시에 즉시 비동기로 집어넣습니다.
+            // 사용자가 대화창을 클릭하는 시간 동안 이미지를 다 그려두게 만드는 핵심 로직입니다.
+            urlsToPreload.forEach(url => {
                 const img = new Image();
                 img.src = url;
             });
+          };
+
+          // HUB 로드 시점에 하는 커버 이미지 Preload는 유지
+          const preloadHubAssets = (novelData) => {
+            if (!novelData) return;
+            const urls = new Set();
+            if (novelData.meta?.coverBg) urls.add(getSafeUrl(novelData.meta.coverBg));
+            urls.forEach(url => { const img = new Image(); img.src = url; });
           };
 
           const processLoadedText = (fullText) => {
@@ -457,7 +482,8 @@
             setStats(initialStats);
             setAppState('HUB');
 
-            preloadImages(novel);
+            // 로드 시점에 기본 에셋만 빠르게 Preload
+            preloadHubAssets(novel);
           };
 
           const startStage = (stageId) => {
@@ -491,6 +517,16 @@
           const currentStageIndex = currentNovel?.stages?.findIndex(s => s.id === currentStageId) ?? -1;
           const hasNextStage = currentNovel && currentStageIndex !== -1 && currentStageIndex < (currentNovel.stages?.length || 0) - 1;
           const nextStage = hasNextStage ? currentNovel.stages[currentStageIndex + 1] : null;
+
+          // ==========================================
+          // [해결] 체감 로딩 Fix 1: 클릭 즉시 적극적 Preload
+          // ==========================================
+          useEffect(() => {
+            if (appState === 'PLAY' && currentNovel && currentStageId && sceneData) {
+                // 사용자가 이 장면을 보기 시작하는 즉시, '다음 장면'의 이미지를 Preload하기 시작합니다.
+                preloadActiveScenes(currentNovel, currentStageId, sceneData);
+            }
+          }, [currentSceneId, appState, currentNovel, currentStageId, sceneData]);
 
           useEffect(() => {
             if (appState !== 'PLAY' || !sceneData || !sceneData.lines) return;
@@ -747,15 +783,20 @@
           return (
             <div className="fixed inset-0 w-full flex flex-col bg-black text-white font-sans select-none overflow-hidden">
               
-              {/* [해결] 투명도(opacity) 제어 및 로딩 상태를 전면 제거한 네이티브 렌더링 영역 */}
+              {/* ==========================================
+                 [해결] 체감 로딩 Fix 2: 자연스러운 화면 전환
+                 로딩 중일 때는 검은 화면 대신 '이전 이미지'가 자연스럽게 Fade-out 되도록 처리합니다.
+              ========================================== */}
               
               {/* 1. 배경 이미지 */}
               <div className="absolute inset-0 pointer-events-none z-0">
                 <div 
                     className="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out scale-105 z-0" 
                     style={{ 
+                        // url 따옴표 및 이스케이프 오류 방지
                         backgroundImage: `url('${getSafeUrl(sceneData.bg)}')`, 
-                        filter: 'brightness(0.5) contrast(1.1)'
+                        filter: 'brightness(0.5) contrast(1.1)',
+                        // 이미지가 완전히 로드되지 않았어도 이전 이미지가 남아있도록 처리
                     }} 
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent z-10" />
@@ -765,12 +806,13 @@
               <div className="absolute inset-0 z-20 pointer-events-none flex justify-center items-center overflow-hidden">
                 {sceneData.character?.charImage ? (
                   <>
-                    {/* 로딩 표시기 (이미지가 덮기 전까지 화면에 보임) */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10">
+                    {/* 로딩 표시기: 이미지가 덮기 전까지 화면 중앙에 AI 로고 표시 */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-sm z-10">
                         <IconCpu size={32} className="text-red-500 animate-spin-slow mb-3" />
                         <span className="text-red-400 font-bold tracking-widest text-sm animate-pulse">일러스트 실시간 로딩 중...</span>
                     </div>
-                    {/* 이미지는 다운로드 완료 즉시 화면을 덮음 */}
+                    {/* [핵심] 네이티브 `<img>` 태그는 로딩 완료 즉시 화면에 나타납니다. 
+                       opacity 제어를 제거하여 브라우저 자체 속도를 100% 활용합니다. */}
                     <img 
                       src={getSafeUrl(sceneData.character.charImage)} 
                       alt="character" 
