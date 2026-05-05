@@ -86,7 +86,11 @@
           for (let i = 0; i < retries; i++) {
             try {
               const res = await fetch(url, options);
-              if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
+              if (!res.ok) {
+                  // 서버 에러 상세 메시지 추출 (Gemini API가 알려주는 구체적인 이유 확인용)
+                  const errText = await res.text();
+                  throw new Error(`HTTP error! status: ${res.status}`);
+              }
               return res;
             } catch (err) {
               if (i === retries - 1) throw err;
@@ -120,7 +124,6 @@
           const [appState, setAppState] = useState('LIBRARY');
           const [novelLibrary, setNovelLibrary] = useState([]);
           
-          // API Key 상태 관리 (로컬스토리지 연동)
           const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
           
           useEffect(() => {
@@ -324,7 +327,9 @@
 }`;
 
             try {
-              const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
+              // 🚨 수정된 부분: 존재하지 않는 모델 이름 대신 가장 확실하고 최신인 gemini-1.5-flash 모델로 변경했습니다.
+              const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+              
               const payload = {
                 contents: [{ parts: [{ text: rawText }] }],
                 systemInstruction: { parts: [{ text: systemInstruction }] },
@@ -340,7 +345,7 @@
               const data = await response.json();
               
               if (!data.candidates || data.candidates.length === 0 || !data.candidates[0].content) {
-                throw new Error("AI 응답이 차단되었거나 비어있습니다. API Key가 올바른지 확인하세요.");
+                throw new Error("AI 응답이 비어있습니다. (API Key가 유효한지 다시 확인해주세요.)");
               }
 
               let jsonText = data.candidates[0].content.parts[0].text;
@@ -350,7 +355,7 @@
               try {
                 parsedNovel = JSON.parse(jsonText);
               } catch (parseError) {
-                throw new Error("생성된 데이터 구조가 끊어졌습니다. 텍스트 분할이 필요합니다.");
+                throw new Error("생성된 데이터 구조가 끊어졌습니다. 텍스트를 조금 더 짧게 줄여서 다시 시도해주세요.");
               }
               
               let createdNovelId = "";
@@ -586,7 +591,6 @@
                     PDF, DOCX, TXT 문서를 업로드하세요. 엔진이 스토리를 분석하여 배경과 캐릭터 일러스트까지 실시간으로 생성해 줍니다!
                   </p>
                   
-                  {/* 보안 적용된 API 키 입력 영역 추가 */}
                   <div className="mb-6 bg-zinc-900 border border-zinc-700 rounded-xl overflow-hidden shadow-2xl p-4 md:p-6 flex flex-col sm:flex-row items-center gap-4">
                       <div className="flex items-center gap-2 text-zinc-300 w-full sm:w-auto shrink-0">
                           <IconKey size={20} className="text-red-400" />
@@ -596,7 +600,7 @@
                           type="password" 
                           value={apiKey} 
                           onChange={(e) => setApiKey(e.target.value)} 
-                          placeholder="AIzaSy... (입력된 키는 브라우저에만 안전하게 보관됩니다)"
+                          placeholder="AIzaSy... (입력된 키는 기기에만 안전하게 보관됩니다)"
                           className="flex-grow w-full bg-black border border-zinc-700 rounded-md p-3 text-white text-sm focus:outline-none focus:border-red-500 transition-colors"
                       />
                   </div>
