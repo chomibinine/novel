@@ -18,6 +18,8 @@
         .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .animate-spin-slow { animation: spin 2s linear infinite; }
+        @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        .animate-pulse-slow { animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
 
         body { 
           margin: 0; background: #000; font-family: 'Pretendard', -apple-system, sans-serif; 
@@ -37,7 +39,7 @@
         const { useState, useEffect, useRef } = React;
 
         // ==========================================
-        // [SVG 아이콘]
+        // [SVG 아이콘 모음]
         // ==========================================
         const IconChevronRight = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>;
         const IconShieldAlert = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
@@ -56,8 +58,17 @@
         const IconKey = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>;
 
         // ==========================================
-        // [방탄 처리] 이미지 URL 생성기 (띄어쓰기 완벽 치환)
+        // [해결] 로컬 스토리지 에러 완벽 방어 (모바일 웹뷰 튕김 방지)
         // ==========================================
+        const safeGetItem = (key) => {
+            try { return localStorage.getItem(key) || ''; } 
+            catch(e) { return ''; }
+        };
+        const safeSetItem = (key, val) => {
+            try { localStorage.setItem(key, val); } 
+            catch(e) {}
+        };
+
         const buildBgUrl = (prompt) => {
             if (!prompt) return '';
             const cleanPrompt = prompt.toString().replace(/[^a-zA-Z0-9, ]/g, '').trim().replace(/\s+/g, '%20');
@@ -138,8 +149,8 @@
           const [appState, setAppState] = useState('LIBRARY');
           const [novelLibrary, setNovelLibrary] = useState([]);
           
-          const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
-          useEffect(() => { localStorage.setItem('gemini_api_key', apiKey); }, [apiKey]);
+          const [apiKey, setApiKey] = useState(() => safeGetItem('gemini_api_key'));
+          useEffect(() => { safeSetItem('gemini_api_key', apiKey); }, [apiKey]);
 
           const [currentNovel, setCurrentNovel] = useState(null);
           const [unlockedStages, setUnlockedStages] = useState({});
@@ -164,7 +175,7 @@
           const getSceneBgUrl = (scene) => {
               if(!scene) return '';
               if(scene.bgPrompt) return buildBgUrl(scene.bgPrompt);
-              if(scene.bg && scene.bg.startsWith('http')) return getSafeUrl(scene.bg);
+              if(scene.bg && scene.bg.toString().startsWith('http')) return getSafeUrl(scene.bg);
               if(scene.bg) return buildBgUrl(scene.bg);
               return '';
           };
@@ -172,7 +183,7 @@
           const getSceneCharUrl = (scene) => {
               if(!scene) return '';
               if(scene.character?.charPrompt) return buildCharUrl(scene.character.charPrompt);
-              if(scene.character?.charImage && scene.character.charImage.startsWith('http')) return getSafeUrl(scene.character.charImage);
+              if(scene.character?.charImage && scene.character.charImage.toString().startsWith('http')) return getSafeUrl(scene.character.charImage);
               if(scene.character?.charImage) return buildCharUrl(scene.character.charImage);
               return '';
           };
@@ -184,40 +195,40 @@
             setIsGenerating(true);
             setErrorMsg("");
 
-            const systemInstruction = `당신은 비주얼 노벨 파서입니다. 무조건 아래 구조의 JSON만 출력하세요.
-1. "scenes" 안에는 각 장면(scene1, scene2...) 객체가 와야 합니다.
-2. 이미지 필드(bgPrompt, charPrompt)에는 오직 짧은 영어 단어 묘사만 쓰세요. (URL 절대 금지)
-3. 장면이 이어지면 "nextScene"에 다음 씬 ID를 넣으세요.
-4. 선택지(choices)를 만들었다면, 그 선택지가 가리키는 next 씬들도 반드시 JSON에 같이 만들어야 합니다!
-5. 모든 color 필드는 "red", "blue", "green", "purple", "yellow", "pink", "zinc" 중 하나.
-
-{
-  "id": "novel_auto",
-  "meta": {
-    "title": "자동 생성 스토리",
-    "author": "AI",
-    "coverBg": "dark romantic background",
-    "description": "사용자 입력 내용",
-    "protagonist": { "name": "나", "role": "주인공", "pov": "Player POV" },
-    "statsConfig": [ { "key": "fear", "label": "FEAR", "color": "yellow" } ]
-  },
-  "stages": [
-    { "id": "stage_1", "title": "에피소드 1", "charName": "추격자", "role": "빌런", "color": "purple", "isUnlocked": true, "firstScene": "scene1" }
-  ],
-  "scenes": {
-    "scene1": {
-      "bgPrompt": "dark rainy alley, cyberpunk",
-      "character": { "name": "추격자", "role": "빌런", "color": "purple", "charPrompt": "scary villain anime boy, shadow" },
-      "lines": [ { "speaker": "나", "text": "숨이 찬다..." } ],
-      "choices": [ { "text": "도망친다", "next": "scene2", "impact": { "fear": 10 } } ]
-    },
-    "scene2": {
-      "bgPrompt": "abandoned building inside",
-      "lines": [ { "speaker": "추격자", "text": "잡았다." } ],
-      "endStage": true
-    }
-  }
-}`;
+            // 빽틱(`) 특수문자마저 제거하여 완벽한 문자열로 변경
+            const systemInstruction = "당신은 비주얼 노벨 파서입니다. 무조건 아래 구조의 JSON만 출력하세요. 마크다운 기호는 절대 쓰지 말고 순수 JSON 텍스트만 출력하세요.\n" +
+            "1. 'scenes' 안에는 각 장면(scene1, scene2...) 객체가 와야 합니다.\n" +
+            "2. 이미지 필드(bgPrompt, charPrompt)에는 오직 짧은 영어 단어 묘사만 쓰세요. (URL 절대 금지)\n" +
+            "3. 장면이 이어지면 'nextScene'에 다음 씬 ID를 넣으세요.\n" +
+            "4. 선택지(choices)를 만들었다면, 그 선택지가 가리키는 next 씬들도 반드시 JSON에 같이 만들어야 합니다!\n" +
+            "5. 모든 color 필드는 'red', 'blue', 'green', 'purple', 'yellow', 'pink', 'zinc' 중 하나.\n\n" +
+            "{\n" +
+            "  \"id\": \"novel_auto\",\n" +
+            "  \"meta\": {\n" +
+            "    \"title\": \"자동 생성 스토리\",\n" +
+            "    \"author\": \"AI\",\n" +
+            "    \"coverBg\": \"dark romantic background\",\n" +
+            "    \"description\": \"사용자 입력 내용\",\n" +
+            "    \"protagonist\": { \"name\": \"나\", \"role\": \"주인공\", \"pov\": \"Player POV\" },\n" +
+            "    \"statsConfig\": [ { \"key\": \"fear\", \"label\": \"FEAR\", \"color\": \"yellow\" } ]\n" +
+            "  },\n" +
+            "  \"stages\": [\n" +
+            "    { \"id\": \"stage_1\", \"title\": \"에피소드 1\", \"charName\": \"추격자\", \"role\": \"빌런\", \"color\": \"purple\", \"isUnlocked\": true, \"firstScene\": \"scene1\" }\n" +
+            "  ],\n" +
+            "  \"scenes\": {\n" +
+            "    \"scene1\": {\n" +
+            "      \"bgPrompt\": \"dark rainy alley, cyberpunk\",\n" +
+            "      \"character\": { \"name\": \"추격자\", \"role\": \"빌런\", \"color\": \"purple\", \"charPrompt\": \"scary villain anime boy, shadow\" },\n" +
+            "      \"lines\": [ { \"speaker\": \"나\", \"text\": \"숨이 찬다...\" } ],\n" +
+            "      \"choices\": [ { \"text\": \"도망친다\", \"next\": \"scene2\", \"impact\": { \"fear\": 10 } } ]\n" +
+            "    },\n" +
+            "    \"scene2\": {\n" +
+            "      \"bgPrompt\": \"abandoned building inside\",\n" +
+            "      \"lines\": [ { \"speaker\": \"추격자\", \"text\": \"잡았다.\" } ],\n" +
+            "      \"endStage\": true\n" +
+            "    }\n" +
+            "  }\n" +
+            "}";
 
             try {
               const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
@@ -243,7 +254,7 @@
               
               let parsedNovel;
               try { parsedNovel = JSON.parse(jsonText); } 
-              catch (parseError) { throw new Error("AI가 구조를 생성하다 실패했습니다. 텍스트를 줄이거나 다시 시도해주세요."); }
+              catch (parseError) { throw new Error("AI가 데이터 구조 생성에 실패했습니다. 텍스트를 줄이거나 다시 시도해주세요."); }
               
               if(!parsedNovel.stages || parsedNovel.stages.length === 0) {
                   parsedNovel.stages = [{ id: "stage_1", title: "에피소드", charName: "?", role: "?", color: "red", isUnlocked: true, firstScene: "scene1" }];
@@ -371,26 +382,23 @@
             if (scrollRef.current) scrollRef.current.scrollTop = 0;
           }, [currentSceneId, lineIndex]);
 
-          // ==========================================
-          // [결정적 방어] 다음 씬을 못 찾으면 가짜 엔딩을 만들어서 살려냄
-          // ==========================================
           const gotoNextScene = (nextId) => {
               if (!currentNovel.scenes[nextId]) {
-                  // 물리적으로 바로 다음에 있는 씬으로 연결 시도
                   const keys = Object.keys(currentNovel.scenes);
                   const currentIdx = keys.indexOf(currentSceneId);
+                  
                   if (currentIdx !== -1 && currentIdx < keys.length - 1) {
                       setCurrentSceneId(keys[currentIdx + 1]);
                       setLineIndex(0);
                       return;
                   }
                   
-                  // 물리적인 씬도 없다면, 그 자리에서 즉석으로 '엔딩 씬'을 창조해서 화면에 보여줌 (에러창 절대 안뜸)
+                  // AI가 씬을 누락했을 때 에러 대신 강제로 '끝'을 맺어줌
                   if (!currentNovel.scenes["fallback_end"]) {
                       currentNovel.scenes["fallback_end"] = {
                           bgPrompt: sceneData.bgPrompt || sceneData.bg || "",
                           character: null,
-                          lines: [{ speaker: "System", text: "이야기가 여기서 끝났습니다. (AI 분량 끝)" }],
+                          lines: [{ speaker: "시스템", text: "이어지는 이야기가 존재하지 않아, 여기서 종료합니다." }],
                           endStage: true
                       };
                   }
@@ -471,7 +479,7 @@
                           type="password" 
                           value={apiKey} 
                           onChange={(e) => setApiKey(e.target.value)} 
-                          placeholder="AIzaSy... (입력된 키는 브라우저에만 안전하게 보관됩니다)"
+                          placeholder="AIzaSy... (입력된 키는 안전하게 보관됩니다)"
                           className="flex-grow w-full bg-black border border-zinc-700 rounded-md p-3 text-white text-sm focus:outline-none focus:border-red-500 transition-colors"
                       />
                   </div>
@@ -498,7 +506,7 @@
                         onChange={(e) => setRawText(e.target.value)}
                         placeholder="이곳에 소설 내용을 붙여넣으세요."
                         className="w-full h-[200px] md:h-[250px] bg-black/50 border border-zinc-700 rounded-lg p-4 text-zinc-300 text-sm md:text-base focus:outline-none focus:border-red-500 custom-scrollbar resize-none mb-4"
-                        disabled={isGenerating}
+                        disabled={isGenerating || textChunks.length > 1}
                       />
                       
                       <div className="flex flex-col md:flex-row items-start md:items-center gap-3 mb-4 bg-zinc-800/50 p-3 rounded-md border border-zinc-700/50">
