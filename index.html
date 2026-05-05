@@ -1,469 +1,111 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI Visual Novel Engine Pro - Ultimate Edition</title>
-    
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
-    
-    <style>
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .animate-spin-slow { animation: spin 2s linear infinite; }
+자취방의 공기는 이제 더 이상 산소가 아닌, 끈적하고 뜨거운 욕망의 입자로 가득 차 있었다. 나는 내 커다란 양손으로 두 자매의 머리카락을 움켜쥐고 있었다. 내 거대한 골격에서 뿜어져 나오는 위압감은 좁은 방안의 중력을 비정상적으로 뒤틀어놓았다.
 
-        body { 
-          margin: 0; background: #000; font-family: 'Pretendard', sans-serif; 
-          overscroll-behavior: none; -webkit-touch-callout: none;
-        }
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #18181b; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #dc2626; border-radius: 4px; }
-    </style>
-</head>
-<body>
-    <div id="root"></div>
+내 왼손아귀에는 차갑고 우아한 난초 같던 서윤 씨가, 오른손아귀에는 갓 피어난 프리지어 같던 서아가 붙잡혀 있었다. 자매의 머리통이 내 커다란 손바닥 안에 각각 하나씩 들어와 있는 이 기괴한 광경은, 내가 가꾼 화원이 마침내 완성되었음을 알리는 신호탄이었다.
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+"오빠... 제발..."
 
-        const IconChevronRight = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>;
-        const IconRotateCcw = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg>;
-        const IconPlay = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
-        const IconCpu = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>;
-        const IconUploadCloud = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/><polyline points="16 16 12 12 8 16"/></svg>;
-        const IconScissors = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>;
-        const IconDownload = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>;
-        const IconTrash = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>;
-        const IconLibrary = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>;
+"이결 씨... 이건 아니야..."
 
-        const App = () => {
-          const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key_pro') || "");
-          const [appState, setAppState] = useState('LIBRARY');
-          const [novelLibrary, setNovelLibrary] = useState([]);
-          const [currentNovel, setCurrentNovel] = useState(null);
-          const [stats, setStats] = useState({});
-          
-          const [currentStageId, setCurrentStageId] = useState(null);
-          const [currentSceneId, setCurrentSceneId] = useState(null);
-          const [lineIndex, setLineIndex] = useState(0);
-          const [displayedText, setDisplayedText] = useState("");
-          const [isTyping, setIsTyping] = useState(false);
-          
-          const [rawText, setRawText] = useState("");
-          const [isGenerating, setIsGenerating] = useState(false);
-          const [errorMsg, setErrorMsg] = useState("");
-          
-          const [textChunks, setTextChunks] = useState([]);
-          const [currentChunkIndex, setCurrentChunkIndex] = useState(0);
-          const [appendTargetId, setAppendTargetId] = useState("NEW");
+서아의 가냘픈 흐느낌과 서윤 씨의 절망적인 탄식이 내 가슴팍에 닿아 흩어졌다. 나는 그들을 무릎 꿇린 채 천천히 상체를 숙였다. 내 광활한 어깨가 그들의 시야를 완전히 차단했고, 자매는 내 거대한 그림자 속에 갇혀 서로의 가쁜 숨소리를 공유해야 했다.
 
-          useEffect(() => {
-            const savedLib = localStorage.getItem('novel_library_pro');
-            if (savedLib) setNovelLibrary(JSON.parse(savedLib));
-          }, []);
+나는 먼저 서아의 뺨을 타고 흐르는 눈물을 엄지손가락으로 닦아내었다. 내 손가락 마디 하나가 그녀의 눈가를 다 덮을 정도로 컸기에, 그 손길은 위로라기보다 낙인을 찍는 행위에 가까웠다.
 
-          useEffect(() => {
-            if (novelLibrary.length >= 0) localStorage.setItem('novel_library_pro', JSON.stringify(novelLibrary));
-            localStorage.setItem('gemini_api_key_pro', apiKey);
-          }, [novelLibrary, apiKey]);
+"서아야, 기억나? 어제 모텔에서 내가 네 쇄골에 입을 맞출 때, 네가 그랬지. 오빠의 무게감이 너무 좋다고. 지금 네 옆에 있는 네 언니도, 그 무게감을 똑같이 기억하고 있어."
 
-          const chunkText = (text, maxLength = 2500) => {
-            const paragraphs = text.split('\n');
-            const chunks = [];
-            let currentChunk = "";
-            for(let p of paragraphs) {
-              if(currentChunk.length + p.length > maxLength) {
-                if(currentChunk.trim()) chunks.push(currentChunk.trim());
-                currentChunk = p + '\n';
-              } else { currentChunk += p + '\n'; }
-            }
-            if(currentChunk.trim()) chunks.push(currentChunk.trim());
-            return chunks;
-          };
+나는 서아를 향해 속삭이며, 동시에 왼손으로 서윤 씨의 목덜미를 거칠게 움켜쥐었다. 서윤 씨는 움찔하며 신음을 내뱉었다. 내 커다란 손이 그녀의 가녀린 목을 감싸 쥐자, 그녀의 맥박이 내 손바닥을 타고 천둥처럼 울렸다.
 
-          const processLoadedText = (fullText) => {
-            const chunks = chunkText(fullText, 2500);
-            if(chunks.length > 1) {
-              setTextChunks(chunks);
-              setCurrentChunkIndex(0);
-              setRawText(chunks[0]);
-              alert(`문서가 안전하게 ${chunks.length}개의 파트로 분할되었습니다.`);
-            } else {
-              setTextChunks([]);
-              setCurrentChunkIndex(0);
-              setRawText(fullText);
-            }
-          };
+"서윤 씨, 당신 동생 앞에서 당신의 이 솔직한 몸이 어떻게 반응하는지 보여줘 봐. 당신, 지금 내가 만지는 곳마다 살갗이 타들어 가는 것 같지?"
 
-          const handleManualSplit = () => {
-            if(!rawText.trim()) return alert("나눌 텍스트가 없습니다.");
-            processLoadedText(rawText);
-          };
+나는 두 자매를 동시에 내 쪽으로 끌어당겼다. 두 여자는 종이 인형처럼 내 가슴팍에 부딪혔다. 얇은 셔츠 너머로 서아의 부드러운 가슴과 서윤 씨의 탄력 있는 가슴이 내 단단한 대흉근에 동시에 밀착되었다.
 
-          const handleFileUpload = (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-            const ext = file.name.split('.').pop().toLowerCase();
-            setIsGenerating(true);
+"아...!"
 
-            if (ext === 'json') {
-              const reader = new FileReader();
-              reader.onload = (e) => {
-                try {
-                  const data = JSON.parse(e.target.result);
-                  setNovelLibrary(prev => [data, ...prev]);
-                  alert("성공적으로 불러왔습니다.");
-                } catch(err) { showError("JSON 파싱 에러"); }
-                finally { setIsGenerating(false); }
-              };
-              reader.readAsText(file);
-            } else if (ext === 'txt') {
-              const reader = new FileReader();
-              reader.onload = (e) => { processLoadedText(e.target.result); setIsGenerating(false); };
-              reader.readAsText(file);
-            } else if (ext === 'docx') {
-              const reader = new FileReader();
-              reader.onload = async (e) => {
-                const res = await mammoth.extractRawText({arrayBuffer: e.target.result});
-                processLoadedText(res.value); setIsGenerating(false);
-              };
-              reader.readAsArrayBuffer(file);
-            } else if (ext === 'pdf') {
-              window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
-              const reader = new FileReader();
-              reader.onload = async (e) => {
-                const pdf = await pdfjsLib.getDocument(new Uint8Array(e.target.result)).promise;
-                let text = "";
-                for(let i=1; i<=pdf.numPages; i++){
-                  const page = await pdf.getPage(i);
-                  const content = await page.getTextContent();
-                  text += content.items.map(s => s.str).join(' ') + "\n";
-                }
-                processLoadedText(text); setIsGenerating(false);
-              };
-              reader.readAsArrayBuffer(file);
-            }
-            event.target.value = null;
-          };
+자매가 동시에 내뱉은 짧은 신음이 방 안을 울렸다. 서아는 언니의 몸이 오빠의 가슴에 닿아 있다는 사실에 경악하면서도, 자신의 몸이 느끼는 그 지독한 열기를 거부하지 못했다. 서윤 씨는 동생의 살결이 자신의 팔에 닿을 때마다 소름 끼치는 수치심을 느꼈지만, 내 거대한 품 안에서 느껴지는 그 압도적인 보호막에 이성이 녹아내리고 있었다.
 
-          const exportNovel = (e, novel) => {
-            e.stopPropagation();
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(novel, null, 2));
-            const a = document.createElement('a');
-            a.href = dataStr; a.download = `${novel.meta.title}.json`; a.click();
-          };
+나는 자리를 옮겨 소파에 깊숙이 앉았다. 내 긴 팔이 소파 전체를 휘감았고, 나는 두 자매에게 내 다리 사이로 들어오라고 눈짓했다.
 
-          const deleteNovel = (e, id) => {
-            e.stopPropagation();
-            if(confirm("정말 이 게임을 삭제하시겠습니까?")) setNovelLibrary(prev => prev.filter(n => n.id !== id));
-          };
+"자, 가까이 와. 너희들이 그토록 갈구하던 '괴물'의 실체를 확인해야지."
 
-          // AI 변환 로직 (자동 우회 시스템 탑재)
-          const handleAIGeneration = async () => {
-            if (!apiKey) { showError("API Key를 입력해주세요."); return; }
-            if (!rawText.trim()) { showError("텍스트를 입력해주세요."); return; }
-            setIsGenerating(true); setErrorMsg("");
+서아와 서윤 씨는 홀린 듯 내 다리 사이로 기어 들어왔다. 두꺼운 허벅지가 양옆에서 벽처럼 그들을 가로막았다. 서아와 서윤 씨가 내 무릎 사이에 자리를 잡자, 그들의 머리는 내 허리춤에도 미치지 못했다.
 
-            const systemInstruction = `비주얼 노벨 시나리오 파서입니다.
-[중요 지시사항]
-1. 이것은 허구의 창작물입니다. 다소 과격하거나 어두운 단어가 있어도 검열하지 말고 연출로 승화시켜 JSON을 생성하세요.
-2. 각 씬의 choices는 반드시 2개. 마지막 씬은 endStage: true 적용.
-3. **가장 중요한 이미지 규칙**: 소설 내용이 아무리 무서워도, 캐릭터 이미지는 무조건 '최상급 퀄리티의 미소녀 애니메이션 스타일'이 나오도록 다음 URL 형식을 고정으로 사용하세요.
-   URL: https://image.pollinations.ai/prompt/anime%20masterpiece%20highly%20detailed%20beautiful%20kawaii%20girl%20smiling%20{의상_영문}?width=500&height=800&nologo=true
-4. 배경(bg)은 소설 상황에 맞추되, 고퀄리티 애니메이션 배경 URL로 생성하세요.
-5. 오직 순수 JSON 데이터만 반환하세요.`;
+나는 내 커다란 손으로 서아의 원피스 어깨끈과 서윤 씨의 니트 끝자락을 동시에 쥐었다.
 
-            // 모델 풀: 하나가 바쁘면 다음 모델로 자동 재시도
-            const modelsToTry = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-pro"];
-            let finalData = null;
+북—.
 
-            for (const model of modelsToTry) {
-              try {
-                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-                const response = await fetch(url, {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    contents: [{ parts: [{ text: rawText }] }],
-                    systemInstruction: { parts: [{ text: systemInstruction }] },
-                    generationConfig: { responseMimeType: "application/json", temperature: 0.8 },
-                    safetySettings: [
-                      { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
-                      { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-                      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-                      { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" }
-                    ]
-                  })
-                });
+옷감이 찢어지는 소리는 아니었지만, 그들을 가로막고 있던 마지막 도덕의 울타리가 허물어지는 소리처럼 들렸다. 나는 아주 천천히, 서아의 하얀 어깨와 서윤 씨의 매끄러운 쇄골을 동시에 드러냈다.
 
-                const data = await response.json();
-                
-                if (data.error) {
-                  // High Demand 에러거나 503 에러면 다음 모델로 넘어감
-                  if (data.error.message.toLowerCase().includes("high demand") || data.error.code === 503 || data.error.code === 404) {
-                    console.warn(`${model} 서버 혼잡/오류. 다음 모델 시도 중...`);
-                    continue; 
-                  }
-                  throw new Error(data.error.message);
-                }
-                
-                if (!data.candidates || data.candidates[0].finishReason === "SAFETY") {
-                  throw new Error("안전 필터에 의해 차단되었습니다. 민감한 단어를 조금 순화해주세요.");
-                }
+"서아야, 잘 봐. 네 언니의 쇄골에 남은 이 멍 자국... 내가 남긴 거야. 그리고 서윤 씨, 서아의 어깨에 남은 이 입술 자국도 내 거야. 이제 당신들은 서로의 몸에서 내 흔적을 찾아야 해. 그게 당신들이 맺은 새로운 자매의 인연이니까."
 
-                finalData = data; // 성공하면 데이터 저장하고 루프 탈출
-                break;
-              } catch (err) {
-                // Fetch 자체 네트워크 에러 등 처리
-                if (err.message.toLowerCase().includes("high demand")) continue;
-                throw err;
-              }
-            }
+내 가학적인 선언에 서윤 씨는 고개를 돌려 서아의 어깨를 보았다. 어제 자신이 이결과 나누었던 그 지독한 밤의 흔적들이, 가장 아끼던 동생의 몸 위에도 똑같이 박혀 있는 것을 본 순간, 그녀의 이성은 완전히 산산조각 났다. 서아 역시 언니의 몸에 남겨진 내 포식자의 낙인을 보며, 질투와 배신감이 뒤섞인 뜨거운 눈물을 흘렸다.
 
-            try {
-              if (!finalData) throw new Error("현재 구글 AI 서버 전체가 혼잡합니다. 1~2분 뒤에 다시 시도해주세요.");
+나는 먼저 서아의 턱을 잡아 들어 올렸다. 내 커다란 손바닥이 그녀의 작은 얼굴을 다 가려버렸다. 나는 그녀의 입술을 거칠게 집어삼켰다.
 
-              let jsonText = finalData.candidates[0].content.parts[0].text.trim().replace(/```json/g, '').replace(/```/g, '');
-              const parsedNovel = JSON.parse(jsonText);
-              
-              let createdId = "";
-              if (appendTargetId === "NEW") {
-                parsedNovel.id = 'novel_' + Date.now();
-                createdId = parsedNovel.id;
-                setNovelLibrary(prev => [parsedNovel, ...prev]);
-              } else {
-                createdId = appendTargetId;
-                setNovelLibrary(prev => {
-                  const lib = [...prev];
-                  const idx = lib.findIndex(n => n.id === appendTargetId);
-                  if (idx !== -1) {
-                    const target = JSON.parse(JSON.stringify(lib[idx]));
-                    const newStageId = 'stage_' + Date.now();
-                    const oldStageId = Object.keys(parsedNovel.scenes)[0];
-                    
-                    const newStage = { ...parsedNovel.stages[0], id: newStageId, isUnlocked: true };
-                    target.stages.push(newStage);
-                    target.scenes[newStageId] = parsedNovel.scenes[oldStageId];
-                    lib[idx] = target;
-                  }
-                  return lib;
-                });
-              }
+"읍... 으응...!"
 
-              setTimeout(() => {
-                if (textChunks.length > 0 && currentChunkIndex < textChunks.length - 1) {
-                  const nextIdx = currentChunkIndex + 1;
-                  setCurrentChunkIndex(nextIdx);
-                  setRawText(textChunks[nextIdx]);
-                  setAppendTargetId(createdId); 
-                  alert(`[파트 ${currentChunkIndex + 1}/${textChunks.length}] 변환 성공! 다음 파트가 자동으로 로드되었습니다.`);
-                } else {
-                  setRawText(""); setTextChunks([]); setCurrentChunkIndex(0);
-                  alert("모든 파트의 변환이 완료되었습니다!");
-                }
-              }, 100);
+서아의 숨결이 내 입안으로 쏟아졌다. 나는 그녀의 혀를 휘감으며 그녀의 이성을 도륙했다. 그러면서도 내 왼손은 서윤 씨의 가슴을 집요하게 애무하고 있었다. 서윤 씨는 동생이 유린당하는 소리를 바로 옆에서 들으며, 내 손길이 주는 쾌락에 몸을 떨었다.
 
-            } catch (err) { showError("오류: " + err.message); }
-            finally { setIsGenerating(false); }
-          };
+나는 서아의 입술을 떼고 곧바로 서윤 씨의 입술을 찾아갔다. 서아의 달콤한 타액이 내 입술에 묻은 채로 서윤 씨의 입안을 침범했다. 서윤 씨는 동생의 흔적을 제 입으로 받아내야 하는 그 지독한 배덕감에 전신을 경련했다.
 
-          const showError = (msg) => { setErrorMsg(msg); setTimeout(() => setErrorMsg(""), 6000); };
+"어때, 서윤 씨? 동생의 맛이 느껴지나? 아니면, 내 맛이 더 강한가?"
 
-          const startStage = (novel, stageId) => {
-            setCurrentNovel(novel); setCurrentStageId(stageId);
-            const firstSceneId = novel.stages.find(s=>s.id===stageId).firstScene || Object.keys(novel.scenes[stageId])[0];
-            setCurrentSceneId(firstSceneId); setLineIndex(0); setAppState('PLAY');
-            const initialStats = {}; novel.meta.statsConfig?.forEach(sc => initialStats[sc.key] = 0);
-            setStats(initialStats);
-          };
+내 잔인한 질문에 서윤 씨는 대답 대신 내 목을 꽉 껴안으며 내 가슴팍을 깨물었다. 서아는 그 광경을 목격하며 자신의 언니가 오빠에게 매달리는 모습에 지독한 소외감과 욕망을 동시에 느꼈다.
 
-          const sceneData = (currentNovel && currentStageId && currentSceneId) ? currentNovel.scenes[currentStageId][currentSceneId] : null;
+"나도... 오빠... 나도 해줘... 나만 봐달란 말이야...!"
 
-          useEffect(() => {
-            if (appState !== 'PLAY' || !sceneData) return;
-            const line = sceneData.lines[lineIndex];
-            if (!line) return;
-            setIsTyping(true); setDisplayedText("");
-            let i = 0;
-            const timer = setInterval(() => {
-              if (i < line.text.length) { setDisplayedText(line.text.substring(0, i+1)); i++; }
-              else { clearInterval(timer); setIsTyping(false); }
-            }, 30);
-            return () => clearInterval(timer);
-          }, [currentSceneId, lineIndex, appState]);
+서아는 내 허벅지를 꽉 붙잡으며 내 다리 사이로 얼굴을 묻으려 했다. 언니를 밀어내고 자신이 그 거대한 무게감을 독차지하고 싶어 하는 그 뒤틀린 경쟁심. 나는 자매의 머리카락을 다시 한번 움켜쥐고 그들을 나란히 세웠다.
 
-          const handleBoxClick = () => {
-            if (isTyping) { setDisplayedText(sceneData.lines[lineIndex].text); setIsTyping(false); return; }
-            if (lineIndex < sceneData.lines.length - 1) setLineIndex(lineIndex + 1);
-            else if (sceneData.nextScene) { setCurrentSceneId(sceneData.nextScene); setLineIndex(0); }
-          };
+나는 내 바지 버클을 풀었다. 금속성이 섞인 그 소리는 이 자취방의 정막을 깨는 가장 폭력적인 선언이었다. 거구의 사내가 가진 그 비정상적인 존재감이 조명 아래 드러나자, 자매는 동시에 숨을 멈췄다.
 
-          const isActionPoint = !isTyping && lineIndex === (sceneData?.lines?.length - 1) && (sceneData?.choices || sceneData?.endStage);
+"자, 이제 시작이야. 당신들이 그토록 원하던 이 괴물의 본질을, 서로 경쟁하듯 받아내 봐. 오늘 밤 이 방 안에서 자매라는 이름은 사라진다. 오직 내 밑에서 신음하는 두 명의 암컷만 남을 뿐이지."
 
-          if (appState === 'LIBRARY') {
-            return (
-              <div className="fixed inset-0 w-full h-full bg-zinc-950 text-white overflow-y-auto custom-scrollbar">
-                {errorMsg && <div className="fixed top-4 left-1/2 -translate-x-1/2 bg-red-600 px-6 py-4 rounded-lg z-50 font-bold shadow-2xl animate-fade-in-up text-center border border-white/20 min-w-[300px]">{errorMsg}</div>}
-                
-                <div className="max-w-5xl mx-auto py-10 px-6 pb-20">
-                  <div className="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
-                    <div className="flex items-center gap-3">
-                      <IconLibrary size={32} className="text-red-600" />
-                      <h1 className="text-3xl font-black uppercase tracking-widest text-red-600">AI Novel Engine <span className="text-white text-sm">PRO</span></h1>
-                    </div>
-                    <div className="flex bg-zinc-900 border border-zinc-700 p-2 rounded-lg">
-                      <span className="text-xs font-bold text-zinc-500 ml-2 mt-1 uppercase mr-2">API KEY</span>
-                      <input type="password" value={apiKey} onChange={(e)=>setApiKey(e.target.value)} className="bg-black border border-zinc-600 text-xs p-1.5 rounded outline-none focus:border-red-600 transition-all"/>
-                    </div>
-                  </div>
+내 낮은 저음이 그들의 머리 위로 쏟아졌고, 자매는 홀린 듯 내 거대한 일부를 향해 손을 뻗었다. 지독한 만찬의 서막이 올랐다.
 
-                  <div className="bg-zinc-900 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden mb-12">
-                    <div className="bg-zinc-800 p-4 border-b border-zinc-700 flex flex-wrap items-center justify-between gap-3">
-                      <div className="flex items-center gap-2 font-bold text-red-400 text-sm"><IconCpu size={18} /> AI 자동 분할 변환기</div>
-                      <div className="flex gap-2">
-                        <button onClick={handleManualSplit} className="flex items-center gap-1 text-xs text-zinc-300 hover:text-white bg-zinc-700 px-3 py-2 rounded-lg transition-colors"><IconScissors size={14} /> 수동 분할</button>
-                        <label className="relative cursor-pointer flex items-center gap-1 text-xs text-zinc-300 hover:text-white bg-zinc-700 px-3 py-2 rounded-lg transition-colors">
-                          <input type="file" accept=".txt,.json,.docx,.pdf" onChange={handleFileUpload} className="hidden" />
-                          <IconUploadCloud size={14} /> 문서 가져오기
-                        </label>
-                      </div>
-                    </div>
-                    <div className="p-6">
-                      {textChunks.length > 1 && (
-                        <div className="mb-4 bg-red-900/30 border border-red-800 text-red-200 p-3 rounded-lg text-sm font-bold flex justify-between">
-                          <span>[분할 진행] 안정적인 처리를 위해 나뉘어 변환됩니다.</span>
-                          <span className="bg-red-700 text-white px-2 py-1 rounded">현재 파트 {currentChunkIndex + 1} / {textChunks.length}</span>
-                        </div>
-                      )}
-                      <textarea value={rawText} onChange={(e)=>setRawText(e.target.value)} disabled={isGenerating || textChunks.length > 1} placeholder="이곳에 소설 내용을 입력하세요. PDF, DOCX 파일도 지원합니다." className="w-full h-48 bg-black border border-zinc-800 rounded-xl p-4 text-sm mb-4 outline-none focus:border-red-600 custom-scrollbar resize-none"/>
-                      
-                      <div className="flex flex-col md:flex-row gap-3">
-                        <select value={appendTargetId} onChange={(e)=>setAppendTargetId(e.target.value)} disabled={textChunks.length > 1 && currentChunkIndex > 0} className="flex-1 bg-zinc-800 border border-zinc-700 text-sm font-bold p-3 rounded-xl outline-none focus:border-red-600 disabled:opacity-50">
-                          <option value="NEW">✨ 새로운 게임으로 생성 (1화)</option>
-                          {novelLibrary.map(n => <option key={n.id} value={n.id}>➕ {n.meta.title}에 누적 저장하기</option>)}
-                        </select>
-                        <button onClick={handleAIGeneration} disabled={isGenerating} className="px-8 py-3 bg-red-700 hover:bg-red-600 rounded-xl font-black text-sm flex items-center justify-center gap-2 disabled:bg-zinc-800 transition-all active:scale-95 shadow-lg">
-                          {isGenerating ? <><IconCpu size={18} className="animate-spin-slow"/> 서버 우회 및 분석 중...</> : <><IconPlay size={18}/> 텍스트를 게임으로 변환</>}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
+좁은 자취방의 공기는 이미 포화 상태였다. 내가 소파에 깊숙이 몸을 묻고 다리를 벌리자, 그 사이의 공간은 두 자매를 가두는 완벽한 함정이 되었다. 내가 내뿜는 뜨거운 열기가 에어컨 바람조차 무색하게 만들었다.
 
-                  <h2 className="text-xl font-black mb-6 tracking-widest text-white border-l-4 border-red-600 pl-3">MY NOVELS</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {novelLibrary.map(n => (
-                      <div key={n.id} onClick={()=> {setCurrentNovel(n); setAppState('HUB');}} className="group relative h-64 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden cursor-pointer hover:border-red-600 transition-all shadow-xl">
-                        <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110" style={{backgroundImage: `url(${n.meta.coverBg})`, filter: 'brightness(0.5)'}}/>
-                        <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"/>
-                        
-                        <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={(e)=>exportNovel(e, n)} className="p-2 bg-black/60 hover:bg-white hover:text-black text-white rounded-full transition-colors shadow-lg" title="다운로드"><IconDownload size={16}/></button>
-                          <button onClick={(e)=>deleteNovel(e, n.id)} className="p-2 bg-black/60 hover:bg-red-600 text-white rounded-full transition-colors shadow-lg" title="삭제"><IconTrash size={16}/></button>
-                        </div>
+내 무릎 아래, 차가운 장판 바닥에 무릎을 꿇은 자매를 내려다보았다. 위에서 내려다보는 내 시선에 잡힌 그들의 정수리와 가녀린 어깨는 마치 거대한 폭풍 앞에 놓인 가냘픈 꽃대 같았다. 나는 내 커다란 손을 뻗어 두 사람의 뒤통수를 지그시 눌렀다. 내 손바닥 하나가 그들의 머리 전체를 뒤덮을 때마다, 자매는 약속이라도 한 듯 어깨를 잘게 떨었다.
 
-                        <div className="absolute bottom-0 left-0 p-6 w-full">
-                          <span className="bg-red-700 text-white px-2 py-1 font-black text-[10px] uppercase tracking-widest mb-2 inline-block rounded-sm">총 {n.stages.length}화</span>
-                          <h3 className="text-2xl font-black leading-tight mb-1">{n.meta.title}</h3>
-                          <p className="text-xs text-zinc-400 line-clamp-1">{n.meta.description || '시나리오 정보'}</p>
-                        </div>
-                      </div>
-                    ))}
-                    {novelLibrary.length === 0 && <div className="col-span-full py-24 text-center text-zinc-600 font-bold border-2 border-dashed border-zinc-800 rounded-2xl">생성된 게임이 없습니다.</div>}
-                  </div>
-                </div>
-              </div>
-            );
-          }
+"자, 서윤 씨. 당신이 그토록 경멸하던 이 '괴물'의 일부를 동생 앞에서 맞이할 시간이야. 그리고 서아 너도... 네가 사랑하는 오빠의 진짜 무게감을 언니와 함께 나눠야지."
 
-          if (appState === 'HUB') {
-            return (
-              <div className="fixed inset-0 w-full h-full bg-black text-white flex flex-col">
-                <div className="absolute inset-0 bg-cover bg-center opacity-30 blur-sm" style={{backgroundImage: `url(${currentNovel.meta.coverBg})`}}/>
-                <div className="relative z-10 p-6 flex justify-between items-center bg-black/40 backdrop-blur-md border-b border-white/10">
-                   <button onClick={()=>setAppState('LIBRARY')} className="flex items-center gap-2 text-sm font-bold text-zinc-400 hover:text-white transition-colors group"><IconRotateCcw size={16} className="group-hover:-rotate-90 transition-all"/> 라이브러리</button>
-                   <div className="font-black text-red-600 tracking-widest text-lg">{currentNovel.meta.title}</div>
-                </div>
-                <div className="relative z-10 flex-1 overflow-y-auto p-6 md:p-10 flex flex-col items-center custom-scrollbar">
-                   <div className="w-full max-w-2xl space-y-4 pb-20">
-                      <h2 className="text-3xl md:text-4xl font-black mb-10 text-center tracking-widest uppercase">Episodes</h2>
-                      {currentNovel.stages.map(st => (
-                        <button key={st.id} onClick={()=>startStage(currentNovel, st.id)} className="w-full p-6 bg-zinc-900/90 border-l-4 border-red-600 rounded-xl flex justify-between items-center hover:bg-zinc-800 transition-all shadow-2xl active:scale-[0.98]">
-                           <div className="text-left">
-                             <div className="text-xs text-zinc-500 font-bold uppercase tracking-widest mb-1">{st.charName || 'Target'}</div>
-                             <div className="text-2xl font-black">{st.title}</div>
-                           </div>
-                           <IconPlay size={24} className="text-red-600"/>
-                        </button>
-                      ))}
-                   </div>
-                </div>
-              </div>
-            );
-          }
+나는 내 하반신의 '본질'을 그들의 얼굴 앞에 들이밀었다. 조명 아래 맥동하는 그 비정상적인 존재감 앞에 서아는 숨을 들이켰고, 서윤 씨는 절망 어린 탄식을 내뱉었다. 하지만 도망치는 사람은 없었다. 오히려 그들은 서로를 의식하며 내 거대한 일부를 향해 조금씩 다가왔다.
 
-          if (appState === 'PLAY') {
-            return (
-              <div className="fixed inset-0 w-full h-full bg-black text-white overflow-hidden select-none">
-                <div className="absolute inset-0 bg-cover bg-center transition-all duration-1000 scale-105" style={{backgroundImage: `url(${sceneData.bg})`, filter: 'brightness(0.6)'}}/>
-                
-                <div className="absolute top-0 w-full p-6 flex justify-between items-start z-50 pointer-events-none">
-                  <div className="bg-black/80 px-6 py-3 border-l-4 border-red-600 backdrop-blur-md shadow-2xl">
-                    <div className="text-xs text-red-600 font-black uppercase tracking-widest">{currentNovel.meta.protagonist.pov}</div>
-                    <div className="text-2xl font-black italic tracking-tight">{currentNovel.meta.protagonist.name}</div>
-                  </div>
-                </div>
+"서로를 봐. 도망치지 말고 똑똑히 보란 말이야."
 
-                <div className="absolute inset-0 flex justify-center items-end pb-36 pointer-events-none">
-                  {sceneData.character && (
-                    <img src={sceneData.character.charImage} className="h-[90%] object-contain animate-fade-in-up drop-shadow-[0_0_50px_rgba(0,0,0,0.9)]" />
-                  )}
-                </div>
+내 명령에 서윤 씨와 서아가 고개를 들어 서로를 응시했다. 자매의 눈동자가 허공에서 부딪혔다. 서윤 씨의 눈에는 동생에 대한 미안함보다 먼저, 자신의 치부를 들켰다는 수치심과 그 뒤에 숨겨진 지독한 욕망이 서려 있었다. 서아의 눈에는 언니에 대한 배신감과, 그럼에도 불구하고 오빠를 뺏기고 싶지 않다는 가학적인 소유욕이 번득였다.
 
-                <div className="absolute bottom-0 w-full p-4 md:p-8 max-w-6xl left-1/2 -translate-x-1/2 z-50">
-                  {isActionPoint && (
-                    <div className="grid gap-3 mb-6 animate-fade-in-up">
-                      {sceneData.choices?.map((c, i) => (
-                        <button key={i} onClick={()=>{
-                           if(c.impact) {
-                             const newStats = {...stats};
-                             Object.keys(c.impact).forEach(k => { if(newStats[k] !== undefined) newStats[k] += c.impact[k]; });
-                             setStats(newStats);
-                           }
-                           setCurrentSceneId(c.next); setLineIndex(0);
-                        }} className="w-full p-5 bg-zinc-900/95 border border-white/10 hover:border-red-600 text-left rounded-xl font-bold transition-all flex justify-between items-center group shadow-2xl backdrop-blur-md active:scale-95">
-                          <span className="text-sm md:text-lg">{c.text}</span> <IconChevronRight size={20} className="text-red-600 group-hover:translate-x-2 transition-all"/>
-                        </button>
-                      ))}
-                      {sceneData.endStage && <button onClick={()=>setAppState('HUB')} className="w-full p-5 bg-red-700 hover:bg-red-600 font-black rounded-xl uppercase tracking-widest shadow-2xl active:scale-95">에피소드 완료 (허브로 돌아가기)</button>}
-                    </div>
-                  )}
+서아가 먼저 내 일부에 입술을 갖다 대었다. 어제보다 훨씬 과감하고 절박한 몸짓이었다. 언니가 보는 앞에서 자신이 더 '잘할 수 있다'는 것을 증명하려는 듯한 그 유아적인 발악이 내 안의 포식자를 자극했다.
 
-                  <div onClick={handleBoxClick} className="w-full h-48 md:h-56 bg-zinc-950/90 border-2 border-white/10 p-8 relative cursor-pointer rounded-2xl backdrop-blur-md shadow-[0_0_50px_rgba(0,0,0,0.8)]">
-                    <div className="absolute -top-5 left-8 px-8 py-1.5 bg-red-700 font-black skew-x-[-15deg] shadow-2xl border-r-4 border-white/30">
-                      <span className="block skew-x-[15deg] text-lg md:text-xl tracking-wide">{sceneData.lines[lineIndex]?.speaker || '???'}</span>
-                    </div>
-                    <div className="text-lg md:text-2xl leading-[1.8] text-zinc-100 overflow-y-auto h-full custom-scrollbar font-medium break-keep">
-                      {displayedText}
-                    </div>
-                    {!isTyping && !isActionPoint && <div className="absolute bottom-6 right-8 animate-bounce text-red-600"><IconChevronRight size={32}/></div>}
-                  </div>
-                </div>
-              </div>
-            );
-          }
-          return null;
-        };
+"읍... 으응..."
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+서아의 여린 입술이 내 굵기를 다 감당하지 못해 벌어질 때마다, 내 커다란 손가락은 그녀의 머리카락을 꽉 움켜쥐었다. 압박감에 서아는 고통스러운 듯 미간을 찌푸리면서도 더 깊이 파고들려 애썼다.
+
+그 광경을 지켜보던 서윤 씨의 호흡이 거칠어졌다. 동생이 자신의 자리를 대신하고 있다는 그 소외감이, 평소의 냉철했던 그녀를 완전히 무너뜨렸다. 그녀는 누가 시키지도 않았는데 서아의 옆으로 바짝 다가와 내 나머지 일부를 감싸 쥐었다.
+
+"이결 씨... 하아... 나도... 나도..."
+
+서윤 씨의 가느다란 손가락이 내 뜨거운 피부를 훑고 지나갔다. 나는 그녀의 머리채를 잡아 내 쪽으로 끌어당겼다. 내 손아귀 안에서 그녀의 고개는 속절없이 꺾였다.
+
+"좋아, 서윤 씨. 당신이 더 잘 알잖아? 내가 어디를 만져야 당신이 소리 없이 우는지."
+
+나는 한 손으로는 서아의 머리를, 다른 한 손으로는 서윤 씨의 턱을 잡아 그들의 입술이 내 몸 위에서 겹치게 만들었다. 자매의 타액이 내 피부 위에서 뒤섞였다. 서윤 씨는 서아의 숨결이 느껴지는 내 몸에 자신의 입술을 겹치며, 배덕감이라는 이름의 가장 강력한 최음제에 취해갔다.
+
+자매의 머리를 양손으로 제어하며 즐기는 이 기괴한 풍경. 좁은 자취방 안에는 젖은 마찰음과 자매의 억눌린 신음 소리만이 천둥처럼 크게 울려 퍼졌다. 서윤 씨는 서아의 뒤통수를 보며, 자신이 지금 동생과 무엇을 공유하고 있는지 뼈저리게 실감했다.
+
+나는 소파에서 상체를 숙여 그들의 가슴을 동시에 움켜쥐었다. 내 커다란 손바닥 하나가 서아의 부드러운 가슴과 서윤 씨의 풍만한 가슴을 각각 완벽하게 덮어버렸다. 근력이 가해지자 자매는 동시에 등을 휘며 내 다리 사이에 얼굴을 묻었다.
+
+"아! 으으으윽...!"
+
+서아는 내 팔뚝 근육을 손톱으로 긁어댔고, 서윤 씨는 내 허벅지를 꽉 붙잡았다. 내 손가락 마디마디가 그들의 여린 살결을 파고들 때마다, 자매는 자신이 지금 거대한 포식자의 손아귀 안에서 죽어가고 있다는 공포와 쾌락을 동시에 느꼈다.
+
+나는 그들의 머리를 더 강하게 눌렀다. 내 거대한 부피감이 그들의 목구멍 깊숙한 곳까지 침범하자, 자매는 구토감을 느끼면서도 도망가지 않았다. 오히려 그들은 내 무게감에 적응하려는 듯, 서로의 어깨를 밀치며 내 몸을 더 많이 차지하려 경쟁했다.
+
+"서아야, 언니보다 네가 더 깊이 받아내야지? 서윤 씨, 동생한테 지고 싶어?"
+
+내 잔인한 부추김에 자매의 눈빛은 더욱 탁해졌다. 이제 그들에게 자매라는 유대감은 없었다. 오직 내 밑에서 더 사랑받고 싶어 하고, 더 망가지고 싶어 하는 두 명의 암컷만이 존재할 뿐이었다.
+
+나는 그들의 머리카락을 놔주고 자리에서 일어났다. 바닥에 엎드려 있던 자매는 마치 거대한 탑을 올려다보듯 나를 우러러보았다. 방 안의 공기는 이제 폭발하기 직전의 화산처럼 요동쳤다.
+
+"자, 이제 침대로 가자. 너희 자매의 그 얄팍한 도덕심이 어디까지 버틸 수 있는지 시험해볼 테니까."
+
+나는 양팔을 뻗어 두 자매를 단숨에 안아 올렸다. 내 넓은 가슴 양옆에 한 명씩 끼워진 채, 자매는 서로의 헐벗은 몸을 마주하며 침실로 향했다.
+
+이제 진짜 만찬의 본편이 시작될 차례였다.
