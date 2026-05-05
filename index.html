@@ -3,85 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI Visual Novel Engine</title>
-    
+    <title>AI Visual Novel Engine v2.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
-    
     <style>
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .animate-spin-slow { animation: spin 2s linear infinite; }
-
-        /* 초기 로딩 확인용 임시 배경색 */
-        #root { background: #1a0505; min-height: 100vh; }
-
-        body { 
-          margin: 0; background: #000; font-family: -apple-system, sans-serif; 
-          overscroll-behavior: none; -webkit-touch-callout: none;
-        }
-        
-        .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #18181b; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #dc2626; }
+        body { margin: 0; background: #000; font-family: sans-serif; overflow: hidden; color: white; }
+        #root { min-height: 100vh; background: #0a0a0a; }
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
-
-        // [핵심] API 키 저장 로직을 가장 안전한 방식으로 변경
-        function getSavedKey() {
-            try { return localStorage.getItem('gemini_api_key') || ''; } 
-            catch(e) { return ''; }
-        }
+        const { useState, useEffect } = React;
 
         const App = () => {
-            const [appState, setAppState] = useState('LIBRARY');
-            const [apiKey, setApiKey] = useState(getSavedKey());
-            const [novelLibrary, setNovelLibrary] = useState([]);
-            const [isGenerating, setIsGenerating] = useState(false);
+            const [state, setState] = useState('INIT'); // INIT, PLAY, ERROR
+            const [apiKey, setApiKey] = useState(() => localStorage.getItem('gemini_api_key') || '');
             const [rawText, setRawText] = useState("어두운 밤, 비가 내리는 골목길. 누군가 나를 쫓아온다.");
-            const [errorMsg, setErrorMsg] = useState("");
+            const [loading, setLoading] = useState(false);
+            const [novel, setNovel] = useState(null);
+            const [sceneId, setSceneId] = useState('');
+            const [lineIdx, setLineIdx] = useState(0);
 
-            const [currentNovel, setCurrentNovel] = useState(null);
-            const [currentStageId, setCurrentStageId] = useState(null);
-            const [currentSceneId, setCurrentSceneId] = useState(null);
-            const [lineIndex, setLineIndex] = useState(0);
-            const [displayedText, setDisplayedText] = useState("");
-            const [isTyping, setIsTyping] = useState(false);
+            useEffect(() => { localStorage.setItem('gemini_api_key', apiKey); }, [apiKey]);
 
-            useEffect(() => {
-                try { localStorage.setItem('gemini_api_key', apiKey); } catch(e) {}
-            }, [apiKey]);
-
-            // 이미지 URL 생성 헬퍼
-            const buildUrl = (type, prompt) => {
-                if (!prompt) return '';
-                const base = type === 'bg' ? 'anime%20visual%20novel%20background' : 'beautiful%20anime%20character';
-                const clean = prompt.toString().replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '%20');
-                return "https://image.pollinations.ai/prompt/" + base + ",%20" + clean + "?width=720&height=1280&nologo=true";
-            };
-
-            const handleAIGeneration = async () => {
-                if (!apiKey) { alert("API 키를 입력해주세요."); return; }
-                setIsGenerating(true);
-                setErrorMsg("");
-
-                const prompt = "당신은 비주얼 노벨 파서입니다. 무조건 순수 JSON만 출력하세요. 마크다운 금지. " +
-                               "scenes 안에는 scene1, scene2 객체를 바로 넣으세요. " +
-                               "bgPrompt와 charPrompt에는 영어 단어만 쓰세요. " +
-                               "모든 씬에 nextScene 또는 endStage를 넣으세요.";
+            const generateGame = async () => {
+                if (!apiKey) return alert("API 키를 입력해주세요!");
+                setLoading(true);
+                
+                const prompt = `비주얼 노벨 JSON 데이터 생성기. 마크다운 없이 순수 JSON만 출력. 
+                구조: {"title":"제목", "scenes":{"scene1":{"bg":"영단어 묘사","char":"영단어 묘사","lines":[{"speaker":"이름","text":"대사"}],"next":"scene2"}}}
+                마지막 씬은 "next":null 로 설정.`;
 
                 try {
-                    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey, {
+                    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -91,97 +51,84 @@
                         })
                     });
 
-                    const data = await res.json();
-                    let jsonText = data.candidates[0].content.parts[0].text;
-                    const parsed = JSON.parse(jsonText);
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-                    // 데이터 강제 정규화
-                    if (!parsed.stages) parsed.stages = [{ id: 'st1', title: '에피소드 1', firstScene: 'scene1' }];
-                    if (parsed.scenes && parsed.scenes.st1) parsed.scenes = parsed.scenes.st1;
+                    const data = await res.json();
                     
-                    parsed.id = 'novel_' + Date.now();
-                    setNovelLibrary([parsed, ...novelLibrary]);
-                    
-                    // 자동 로드
-                    setCurrentNovel(parsed);
-                    setCurrentStageId(parsed.stages[0].id);
-                    setCurrentSceneId(parsed.stages[0].firstScene || Object.keys(parsed.scenes)[0]);
-                    setAppState('PLAY');
+                    // [해결] candidates[0] 에러 방어 로직
+                    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                    if (!content) throw new Error("AI가 답변을 거부했습니다. (안전 필터 또는 할당량 초과)");
+
+                    const parsed = JSON.parse(content);
+                    setNovel(parsed);
+                    setSceneId(Object.keys(parsed.scenes)[0]);
+                    setLineIdx(0);
+                    setState('PLAY');
                 } catch (err) {
-                    alert("오류 발생: " + err.message);
+                    console.error(err);
+                    alert("오류: " + err.message);
                 } finally {
-                    setIsGenerating(false);
+                    setLoading(false);
                 }
             };
 
-            const sceneData = (currentNovel && currentSceneId) ? currentNovel.scenes[currentSceneId] : null;
-
-            useEffect(() => {
-                if (appState === 'PLAY' && sceneData && sceneData.lines[lineIndex]) {
-                    setIsTyping(true);
-                    setDisplayedText("");
-                    let i = 0;
-                    const txt = sceneData.lines[lineIndex].text;
-                    const timer = setInterval(() => {
-                        if (i < txt.length) {
-                            setDisplayedText(prev => prev + txt.charAt(i));
-                            i++;
-                        } else {
-                            clearInterval(timer);
-                            setIsTyping(false);
-                        }
-                    }, 30);
-                    return () => clearInterval(timer);
-                }
-            }, [currentSceneId, lineIndex, appState]);
-
-            if (appState === 'LIBRARY') {
+            if (state === 'INIT') {
                 return (
-                    <div className="p-6 text-white bg-zinc-950 min-h-screen">
-                        <h1 className="text-2xl font-black mb-6 text-red-500">AI NOVEL ENGINE</h1>
-                        <div className="mb-6">
-                            <label className="block text-xs font-bold mb-2">GEMINI API KEY</label>
-                            <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 p-3 rounded" placeholder="AIzaSy..." />
+                    <div className="p-8 max-w-lg mx-auto flex flex-col gap-6 fade-in">
+                        <h1 className="text-3xl font-black text-red-600 tracking-tighter">AI NOVEL ENGINE</h1>
+                        <div>
+                            <label className="text-xs font-bold text-zinc-500 uppercase">Gemini API Key</label>
+                            <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 p-4 rounded-lg mt-1 outline-none focus:border-red-600 transition-all" placeholder="AIzaSy..."/>
                         </div>
-                        <div className="bg-zinc-900 p-4 rounded-xl border border-zinc-800">
-                            <textarea value={rawText} onChange={e => setRawText(e.target.value)} className="w-full h-40 bg-transparent outline-none resize-none text-sm" placeholder="소설 내용을 입력하세요..." />
-                            <button onClick={handleAIGeneration} disabled={isGenerating} className="w-full py-4 bg-red-700 font-bold rounded-lg mt-4">
-                                {isGenerating ? "AI 분석 중..." : "게임 시작하기"}
+                        <div className="bg-zinc-900 p-6 rounded-2xl border border-zinc-800">
+                            <textarea value={rawText} onChange={e => setRawText(e.target.value)} className="w-full h-48 bg-transparent outline-none resize-none text-lg leading-relaxed" placeholder="소설 내용을 입력하세요..."/>
+                            <button onClick={generateGame} disabled={loading} className="w-full py-4 bg-red-700 hover:bg-red-600 disabled:bg-zinc-800 font-bold rounded-xl mt-4 transition-all">
+                                {loading ? "AI가 세계관 구성 중..." : "게임 시작하기"}
                             </button>
                         </div>
                     </div>
                 );
             }
 
-            if (appState === 'PLAY' && sceneData) {
-                const bg = buildUrl('bg', sceneData.bgPrompt || sceneData.bg);
-                const char = buildUrl('char', sceneData.character?.charPrompt || sceneData.character?.charImage);
+            const currentScene = novel?.scenes[sceneId];
+            if (!currentScene) return <div className="p-10 text-center">데이터 오류 <button onClick={()=>setState('INIT')}>돌아가기</button></div>;
 
-                return (
-                    <div className="fixed inset-0 bg-black flex flex-col overflow-hidden" onClick={() => {
-                        if (!isTyping) {
-                            if (lineIndex < sceneData.lines.length - 1) setLineIndex(lineIndex + 1);
-                            else if (sceneData.nextScene) { setCurrentSceneId(sceneData.nextScene); setLineIndex(0); }
-                            else { setAppState('LIBRARY'); }
-                        }
-                    }}>
-                        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('" + bg + "')", filter: 'brightness(0.6)' }} />
-                        
-                        {char && (
-                            <div className="absolute inset-0 flex justify-center items-end">
-                                <img src={char} className="h-[80%] object-contain" />
-                            </div>
-                        )}
+            const bgUrl = `https://image.pollinations.ai/prompt/anime%20visual%20novel%20background%20${encodeURIComponent(currentScene.bg)}?width=720&height=1280&nologo=true`;
+            const charUrl = `https://image.pollinations.ai/prompt/anime%20visual%20novel%20character%20portrait%20${encodeURIComponent(currentScene.char)}?width=720&height=1280&nologo=true`;
 
-                        <div className="mt-auto relative p-6 bg-black/80 border-t-2 border-red-900 h-1/3">
-                            <div className="text-red-500 font-bold mb-2">{sceneData.lines[lineIndex]?.speaker || "???"}</div>
-                            <div className="text-lg leading-relaxed">{displayedText}</div>
-                        </div>
+            return (
+                <div className="fixed inset-0 bg-black flex flex-col fade-in" onClick={() => {
+                    if (lineIdx < currentScene.lines.length - 1) {
+                        setLineIdx(lineIdx + 1);
+                    } else if (currentScene.next && novel.scenes[currentScene.next]) {
+                        setSceneId(currentScene.next);
+                        setLineIdx(0);
+                    } else {
+                        if(confirm("엔딩입니다. 처음으로 돌아갈까요?")) setState('INIT');
+                    }
+                }}>
+                    {/* 배경 */}
+                    <div className="absolute inset-0 bg-cover bg-center transition-all duration-700" style={{ backgroundImage: `url('${bgUrl}')` }}>
+                        <div className="absolute inset-0 bg-black/40" />
                     </div>
-                );
-            }
 
-            return <div className="text-white p-10">데이터 로딩 오류... <button onClick={() => location.reload()}>새로고침</button></div>;
+                    {/* 캐릭터 */}
+                    <div className="absolute inset-0 flex justify-center items-end">
+                        <img key={sceneId} src={charUrl} className="h-[85%] object-contain fade-in" />
+                    </div>
+
+                    {/* 대화창 */}
+                    <div className="mt-auto relative p-8 bg-black/80 border-t-4 border-red-900/50 backdrop-blur-md min-h-[30%]">
+                        <div className="text-red-500 font-black text-xl mb-3 tracking-tighter">
+                            {currentScene.lines[lineIdx]?.speaker}
+                        </div>
+                        <div className="text-2xl leading-snug font-medium break-keep">
+                            {currentScene.lines[lineIdx]?.text}
+                        </div>
+                        <div className="absolute bottom-4 right-8 animate-bounce text-red-600">▼</div>
+                    </div>
+                </div>
+            );
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
