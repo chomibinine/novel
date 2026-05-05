@@ -11,73 +11,181 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     
     <style>
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.3s ease-out forwards; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
         .animate-spin-slow { animation: spin 2s linear infinite; }
-        @keyframes pulse-slow { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-        .animate-pulse-slow { animation: pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+
+        /* 초기 로딩 확인용 임시 배경색 */
+        #root { background: #1a0505; min-height: 100vh; }
 
         body { 
-          margin: 0; background: #000; font-family: 'Pretendard', -apple-system, sans-serif; 
+          margin: 0; background: #000; font-family: -apple-system, sans-serif; 
           overscroll-behavior: none; -webkit-touch-callout: none;
         }
         
         .custom-scrollbar::-webkit-scrollbar { width: 5px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: #18181b; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #dc2626; border-radius: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #b91c1c; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #18181b; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #dc2626; }
     </style>
 </head>
 <body>
     <div id="root"></div>
 
-    <script type="text/babel" data-presets="env,react">
+    <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
-        // ==========================================
-        // [에러 블랙박스] 앱이 뻗으면 원인을 화면에 띄움
-        // ==========================================
-        class ErrorBoundary extends React.Component {
-            constructor(props) {
-                super(props);
-                this.state = { hasError: false, errorInfo: null };
-            }
-            static getDerivedStateFromError(error) {
-                return { hasError: true, errorInfo: error.toString() };
-            }
-            render() {
-                if (this.state.hasError) {
-                    return (
-                        <div className="p-6 text-red-500 bg-black h-screen font-mono text-sm break-all overflow-y-auto">
-                            <h2 className="text-xl font-bold mb-4 border-b border-red-800 pb-2">CRITICAL ERROR (앱 충돌)</h2>
-                            <p className="text-zinc-300 mb-4">아래 에러 메시지를 복사해서 알려주시면 즉시 해결해 드리겠습니다.</p>
-                            <p className="bg-red-950/50 p-4 rounded">{this.state.errorInfo}</p>
-                        </div>
-                    );
-                }
-                return this.props.children;
-            }
+        // [핵심] API 키 저장 로직을 가장 안전한 방식으로 변경
+        function getSavedKey() {
+            try { return localStorage.getItem('gemini_api_key') || ''; } 
+            catch(e) { return ''; }
         }
 
-        // ==========================================
-        // [SVG 아이콘]
-        // ==========================================
-        const IconChevronRight = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>;
-        const IconShieldAlert = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
-        const IconRotateCcw = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg>;
-        const IconBriefcase = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></svg>;
-        const IconUser = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>;
-        const IconBookOpen = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>;
-        const IconFlame = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></svg>;
-        const IconDroplets = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M7 16.3c2.2 0 4-1.83 4-4.05 0-1.16-.57-2.26-1.71-3.19S7 2.9 7 2.9s-2.29 6.16-2.29 6.16c-1.14.93-1.71 2.03-1.71 3.19C3 14.47 4.8 16.3 7 16.3z"/><path d="M20.5 10.4c1.14.93 1.71 2.03 1.71 3.19 0 2.22-1.8 4.05-4 4.05s-4-1.83-4-4.05c0-1.16.57-2.26 1.71-3.19.01 0 2.29-6.16 2.29-6.16s2.28 6.16 2.29 6.16z"/></svg>;
-        const IconLibrary = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>;
-        const IconPlay = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
-        const IconCpu = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>;
-        const IconUploadCloud = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/><polyline points="16 16 12 12 8 16"/></svg>;
-        const IconLock = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>;
-        const IconScissors = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>;
-        const IconKey = ({size=24, className=""}) => <svg width={size} height={size} className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m
+        const App = () => {
+            const [appState, setAppState] = useState('LIBRARY');
+            const [apiKey, setApiKey] = useState(getSavedKey());
+            const [novelLibrary, setNovelLibrary] = useState([]);
+            const [isGenerating, setIsGenerating] = useState(false);
+            const [rawText, setRawText] = useState("어두운 밤, 비가 내리는 골목길. 누군가 나를 쫓아온다.");
+            const [errorMsg, setErrorMsg] = useState("");
+
+            const [currentNovel, setCurrentNovel] = useState(null);
+            const [currentStageId, setCurrentStageId] = useState(null);
+            const [currentSceneId, setCurrentSceneId] = useState(null);
+            const [lineIndex, setLineIndex] = useState(0);
+            const [displayedText, setDisplayedText] = useState("");
+            const [isTyping, setIsTyping] = useState(false);
+
+            useEffect(() => {
+                try { localStorage.setItem('gemini_api_key', apiKey); } catch(e) {}
+            }, [apiKey]);
+
+            // 이미지 URL 생성 헬퍼
+            const buildUrl = (type, prompt) => {
+                if (!prompt) return '';
+                const base = type === 'bg' ? 'anime%20visual%20novel%20background' : 'beautiful%20anime%20character';
+                const clean = prompt.toString().replace(/[^a-zA-Z0-9 ]/g, '').replace(/\s+/g, '%20');
+                return "https://image.pollinations.ai/prompt/" + base + ",%20" + clean + "?width=720&height=1280&nologo=true";
+            };
+
+            const handleAIGeneration = async () => {
+                if (!apiKey) { alert("API 키를 입력해주세요."); return; }
+                setIsGenerating(true);
+                setErrorMsg("");
+
+                const prompt = "당신은 비주얼 노벨 파서입니다. 무조건 순수 JSON만 출력하세요. 마크다운 금지. " +
+                               "scenes 안에는 scene1, scene2 객체를 바로 넣으세요. " +
+                               "bgPrompt와 charPrompt에는 영어 단어만 쓰세요. " +
+                               "모든 씬에 nextScene 또는 endStage를 넣으세요.";
+
+                try {
+                    const res = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            contents: [{ parts: [{ text: rawText }] }],
+                            systemInstruction: { parts: [{ text: prompt }] },
+                            generationConfig: { responseMimeType: "application/json" }
+                        })
+                    });
+
+                    const data = await res.json();
+                    let jsonText = data.candidates[0].content.parts[0].text;
+                    const parsed = JSON.parse(jsonText);
+
+                    // 데이터 강제 정규화
+                    if (!parsed.stages) parsed.stages = [{ id: 'st1', title: '에피소드 1', firstScene: 'scene1' }];
+                    if (parsed.scenes && parsed.scenes.st1) parsed.scenes = parsed.scenes.st1;
+                    
+                    parsed.id = 'novel_' + Date.now();
+                    setNovelLibrary([parsed, ...novelLibrary]);
+                    
+                    // 자동 로드
+                    setCurrentNovel(parsed);
+                    setCurrentStageId(parsed.stages[0].id);
+                    setCurrentSceneId(parsed.stages[0].firstScene || Object.keys(parsed.scenes)[0]);
+                    setAppState('PLAY');
+                } catch (err) {
+                    alert("오류 발생: " + err.message);
+                } finally {
+                    setIsGenerating(false);
+                }
+            };
+
+            const sceneData = (currentNovel && currentSceneId) ? currentNovel.scenes[currentSceneId] : null;
+
+            useEffect(() => {
+                if (appState === 'PLAY' && sceneData && sceneData.lines[lineIndex]) {
+                    setIsTyping(true);
+                    setDisplayedText("");
+                    let i = 0;
+                    const txt = sceneData.lines[lineIndex].text;
+                    const timer = setInterval(() => {
+                        if (i < txt.length) {
+                            setDisplayedText(prev => prev + txt.charAt(i));
+                            i++;
+                        } else {
+                            clearInterval(timer);
+                            setIsTyping(false);
+                        }
+                    }, 30);
+                    return () => clearInterval(timer);
+                }
+            }, [currentSceneId, lineIndex, appState]);
+
+            if (appState === 'LIBRARY') {
+                return (
+                    <div className="p-6 text-white bg-zinc-950 min-h-screen">
+                        <h1 className="text-2xl font-black mb-6 text-red-500">AI NOVEL ENGINE</h1>
+                        <div className="mb-6">
+                            <label className="block text-xs font-bold mb-2">GEMINI API KEY</label>
+                            <input type="password" value={apiKey} onChange={e => setApiKey(e.target.value)} className="w-full bg-zinc-900 border border-zinc-800 p-3 rounded" placeholder="AIzaSy..." />
+                        </div>
+                        <div className="bg-zinc-900 p-4 rounded-xl border border-zinc-800">
+                            <textarea value={rawText} onChange={e => setRawText(e.target.value)} className="w-full h-40 bg-transparent outline-none resize-none text-sm" placeholder="소설 내용을 입력하세요..." />
+                            <button onClick={handleAIGeneration} disabled={isGenerating} className="w-full py-4 bg-red-700 font-bold rounded-lg mt-4">
+                                {isGenerating ? "AI 분석 중..." : "게임 시작하기"}
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (appState === 'PLAY' && sceneData) {
+                const bg = buildUrl('bg', sceneData.bgPrompt || sceneData.bg);
+                const char = buildUrl('char', sceneData.character?.charPrompt || sceneData.character?.charImage);
+
+                return (
+                    <div className="fixed inset-0 bg-black flex flex-col overflow-hidden" onClick={() => {
+                        if (!isTyping) {
+                            if (lineIndex < sceneData.lines.length - 1) setLineIndex(lineIndex + 1);
+                            else if (sceneData.nextScene) { setCurrentSceneId(sceneData.nextScene); setLineIndex(0); }
+                            else { setAppState('LIBRARY'); }
+                        }
+                    }}>
+                        <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('" + bg + "')", filter: 'brightness(0.6)' }} />
+                        
+                        {char && (
+                            <div className="absolute inset-0 flex justify-center items-end">
+                                <img src={char} className="h-[80%] object-contain" />
+                            </div>
+                        )}
+
+                        <div className="mt-auto relative p-6 bg-black/80 border-t-2 border-red-900 h-1/3">
+                            <div className="text-red-500 font-bold mb-2">{sceneData.lines[lineIndex]?.speaker || "???"}</div>
+                            <div className="text-lg leading-relaxed">{displayedText}</div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return <div className="text-white p-10">데이터 로딩 오류... <button onClick={() => location.reload()}>새로고침</button></div>;
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
