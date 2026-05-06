@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Visual Novel Engine - High Quality Edition</title>
+    <title>Visual Novel Engine - Universal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -39,23 +39,26 @@ const IcoChevron = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="n
 const IcoZap = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
 
 /* ══════════════════════════════════════
-   🔥 예쁘고 퀄리티 높은 애니메이션 에셋 시스템
+   🔥 범용 오토-캐스팅 시스템 (이름만 쓰면 자동 생성)
 ══════════════════════════════════════ */
-const SPEAKER_MAP = {
-    "초미": "chomi",
-    "비니": "bini",
-    "주인공": "mc"
+
+// 1. 이름 글자를 고유 숫자로 변환하는 해시 함수 (얼굴 고정용)
+const getSeedFromName = (name) => {
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+        hash = (hash << 5) - hash + name.charCodeAt(i);
+    }
+    return Math.abs(hash);
 };
 
-// 고퀄리티 작화를 보장하기 위한 강력한 프롬프트 베이스 (초미 안경 금지 반영)
-const CHAR_PROMPTS = {
-    chomi: "masterpiece, high quality, highly detailed, beautiful anime high school girl, long black hair, school uniform, no glasses, detailed face, vibrant colors",
-    bini: "masterpiece, high quality, highly detailed, cute anime middle school boy, short brown hair, casual outfit, detailed face, vibrant colors",
-    mc: "masterpiece, high quality, highly detailed, handsome anime young man, dark hair, casual coat, detailed face"
+// 2. 미리 정의해둔 특정 캐릭터들 (특별 대우)
+const PRESET_PROMPTS = {
+    "초미": "masterpiece, high quality, highly detailed, beautiful anime high school girl, long black hair, school uniform, no glasses, detailed face",
+    "비니": "masterpiece, high quality, highly detailed, cute anime middle school boy, short brown hair, casual outfit, detailed face"
 };
 
 const EMOTION_PROMPTS = {
-    neutral: "calm expression, looking forward",
+    neutral: "calm expression",
     happy: "smiling brightly, cheerful",
     sad: "teary eyes, sad expression",
     angry: "angry, frowning",
@@ -63,46 +66,34 @@ const EMOTION_PROMPTS = {
     bold: "confident smirk, energetic"
 };
 
-// 캐릭터 URL 생성: turbo 옵션을 빼서 속도 대신 퀄리티를 최대로 끌어올림
-const getCharacterUrl = (charId, emotion = "neutral") => {
+// 3. 모르는 이름이 들어와도 알아서 캐릭터를 생성하도록 수정
+const getCharacterUrl = (speakerName, emotion = "neutral") => {
     if (emotion === "exit") return null;
     
-    const basePrompt = CHAR_PROMPTS[charId] || CHAR_PROMPTS.chomi;
+    // 미리 정의된 캐릭터면 그 설정을 쓰고, 없으면 범용 고퀄리티 애니메이션 프롬프트 적용
+    const basePrompt = PRESET_PROMPTS[speakerName] || "masterpiece, high quality, highly detailed, beautiful anime character, solo, detailed face, vibrant colors";
     const emoPrompt = EMOTION_PROMPTS[emotion] || EMOTION_PROMPTS.neutral;
     const finalPrompt = `${basePrompt}, ${emoPrompt}`;
-    const seed = charId === 'chomi' ? 777 : charId === 'bini' ? 888 : 999;
     
-    // model=turbo 삭제 (고퀄리티 보장)
+    // 이름에서 영구적인 고유 시드를 뽑아냄 (누가 써도 '철수'는 항상 같은 얼굴로 나옴)
+    const seed = PRESET_PROMPTS[speakerName] ? (speakerName === "초미" ? 777 : 888) : getSeedFromName(speakerName);
+    
     return `https://image.pollinations.ai/prompt/${encodeURIComponent(finalPrompt)}?width=350&height=550&nologo=true&seed=${seed}`;
 };
 
-// 배경도 고퀄리티 애니메이션 스타일로 강제 적용
 const getBgUrl = (seed) => {
-    const bgPrompt = "masterpiece, high quality, highly detailed, beautiful anime visual novel background, cinematic lighting, scenic";
+    const bgPrompt = "masterpiece, high quality, beautiful anime visual novel background, cinematic lighting";
     return `https://image.pollinations.ai/prompt/${encodeURIComponent(bgPrompt)}?width=1280&height=720&nologo=true&seed=${seed}`;
 };
 
-// 🔥 안정성 보장: 퀄리티가 높아진 만큼 생성 시간이 길어질 수 있으므로 타임아웃을 5초(5000ms)로 연장
 const preloadImage = (src, timeout = 5000) => {
     if (!src) return Promise.resolve(null);
     return new Promise(res => {
         const img = new Image();
         let done = false;
-
-        const finish = (finalSrc) => {
-            if (!done) {
-                done = true;
-                res(finalSrc);
-            }
-        };
-
+        const finish = (finalSrc) => { if (!done) { done = true; res(finalSrc); } };
         img.onload = () => finish(src);
-        img.onerror = () => {
-            console.warn("이미지 로드 실패 (Fallback 적용):", src);
-            // 에러 발생 시 부드러운 애니메이션 더미 배경으로 대체
-            finish(`https://image.pollinations.ai/prompt/anime%20silhouette?width=350&height=550&nologo=true`); 
-        };
-
+        img.onerror = () => { finish(`https://image.pollinations.ai/prompt/anime%20silhouette?width=350&height=550&nologo=true`); };
         img.src = src;
         setTimeout(() => finish(src), timeout);
     });
@@ -142,12 +133,12 @@ function parseNovel(rawText, title="") {
             lines: seg,
             isRouteSplit,
             choices: i < segs.length - 1 && !isRouteSplit ? [
-                { text: "🤝 믿고 기다려준다", next: `${id}_a`, mood: "trust" },
-                { text: "⚡ 내가 나선다", next: `${id}_b`, mood: "bold" },
+                { text: "🤝 동의한다", next: `${id}_a`, mood: "trust" },
+                { text: "⚡ 반박한다", next: `${id}_b`, mood: "bold" },
             ] : null
         };
-        scenes[`${id}_a`] = { lines: [{speaker:"서술", text:"당신의 신뢰가 공기를 부드럽게 만들었다.", position:"center"}], nextScene: `scene_${i+1}`, bg: scenes[id].bg };
-        scenes[`${id}_b`] = { lines: [{speaker:"서술", text:"당신의 결단력이 상황을 급변시켰다.", position:"center"}], nextScene: `scene_${i+1}`, bg: scenes[id].bg };
+        scenes[`${id}_a`] = { lines: [{speaker:"서술", text:"당신의 선택이 분위기를 부드럽게 만들었다.", position:"center"}], nextScene: `scene_${i+1}`, bg: scenes[id].bg };
+        scenes[`${id}_b`] = { lines: [{speaker:"서술", text:"당신의 결단력이 흐름을 바꾸었다.", position:"center"}], nextScene: `scene_${i+1}`, bg: scenes[id].bg };
     });
 
     const routes = ["trust", "bold", "neutral"];
@@ -159,7 +150,7 @@ function parseNovel(rawText, title="") {
         };
     });
 
-    return { id: 'novel_'+ts, meta: { title: title || "초미 & 비니 스토리" }, stages: [{id:'st_1', firstScene:'scene_0'}], scenes: { 'st_1': scenes } };
+    return { id: 'novel_'+ts, meta: { title: title || "새로운 이야기" }, stages: [{id:'st_1', firstScene:'scene_0'}], scenes: { 'st_1': scenes } };
 }
 
 /* ══════════════════════════════════════
@@ -170,13 +161,13 @@ const App = () => {
     const [library, setLibrary] = useState([]);
     const [novel, setNovel] = useState(null);
     
-    // 테스트하기 좋은 풍부한 대본 세팅
-    const DEFAULT_SCRIPT = `초미|happy|left: 비니야, 오늘 날씨 진짜 좋다!
-비니|neutral|right: 그러게. 근데 누나, 안경은 어쨌어?
-초미|bold|left: 오늘은 안경 안 쓰는 날이야! 절대 안 쓸 거야!
-비니|shy|right: 어... 안 쓴 것도 꽤 어울리네.
-초미|happy|left: 진짜? 다행이다.
-비니|exit|right: (비니가 쑥스러운 듯 고개를 돌린다)`;
+    // 모르는 이름(나루토, 사스케)을 넣어도 작동하는지 테스트하는 대본
+    const DEFAULT_SCRIPT = `나루토|happy|left: 드디어 새로운 대본을 넣었군!
+사스케|neutral|right: 바보 녀석, 엔진이 우리 얼굴을 알아서 만들어줄 거라고.
+나루토|bold|left: 진짜? 시드 기반이라 계속 똑같은 얼굴로 나온다며?
+사스케|shy|right: ...아마도.
+나루토|exit|left:
+사스케|sad|right: 혼자 남았군.`;
     
     const [rawText, setRawText] = useState(DEFAULT_SCRIPT);
     
@@ -210,16 +201,13 @@ const App = () => {
         let nextLeft = visuals.left;
         let nextRight = visuals.right;
 
+        // 🔥 모르는 이름이 들어와도 그냥 생성 함수로 던짐
         if (firstLine && firstLine.speaker !== "서술") {
-            const charId = SPEAKER_MAP[firstLine.speaker];
-            if (charId) {
-                const url = getCharacterUrl(charId, firstLine.emotion);
-                if (firstLine.position === "right") nextRight = url;
-                else nextLeft = url;
-            }
+            const url = getCharacterUrl(firstLine.speaker, firstLine.emotion);
+            if (firstLine.position === "right") nextRight = url;
+            else nextLeft = url;
         }
 
-        // 배경은 즉시 교체 대기, 캐릭터는 페이드아웃
         setVisuals(v => ({ ...v, bg: nextScene.bg, charVisible: false }));
         
         const preloads = [];
@@ -263,16 +251,12 @@ const App = () => {
             const nextIdx = lineIdx + 1;
             const nextLine = scene.lines[nextIdx];
             
-            // 라인 전환 시 화자와 감정에 맞게 시각 효과 즉각 갱신
             setVisuals(prev => {
                 const nv = { ...prev };
                 if (nextLine.speaker !== "서술") {
-                    const charId = SPEAKER_MAP[nextLine.speaker];
-                    if (charId) {
-                        const pos = nextLine.position === "right" ? "right" : "left";
-                        if (nextLine.emotion === "exit") nv[pos] = null;
-                        else nv[pos] = getCharacterUrl(charId, nextLine.emotion);
-                    }
+                    const pos = nextLine.position === "right" ? "right" : "left";
+                    if (nextLine.emotion === "exit") nv[pos] = null;
+                    else nv[pos] = getCharacterUrl(nextLine.speaker, nextLine.emotion); // 🔥 자동 갱신
                 }
                 return nv;
             });
@@ -309,9 +293,9 @@ const App = () => {
     if (screen === 'LIBRARY') return (
         <div className="fixed inset-0 bg-zinc-950 text-white overflow-y-auto p-6 custom-scrollbar">
             <div className="max-w-3xl mx-auto mt-10">
-                <h1 className="text-3xl font-black mb-8 text-shimmer tracking-widest uppercase">Visual Novel HQ</h1>
+                <h1 className="text-3xl font-black mb-8 text-shimmer tracking-widest uppercase">Visual Novel Universal</h1>
                 <div className="bg-zinc-900 p-6 rounded-2xl mb-10 border border-zinc-800 shadow-2xl">
-                    <p className="text-xs text-zinc-400 mb-3 font-bold uppercase">형식: 화자|감정|위치: 대사 (퇴장 = exit)</p>
+                    <p className="text-xs text-zinc-400 mb-3 font-bold uppercase">어떤 이름이든 알아서 그려줍니다! (형식: 화자|감정|위치: 대사)</p>
                     <textarea 
                         value={rawText} onChange={e=>setRawText(e.target.value)}
                         className="w-full h-56 bg-black p-4 rounded-xl mb-4 outline-none border border-zinc-700 focus:border-red-500 transition-all text-[15px] font-medium custom-scrollbar leading-relaxed"
@@ -322,7 +306,7 @@ const App = () => {
                         setLibrary([n, ...library]);
                         startGame(n);
                     }} className="w-full py-4 bg-red-700 hover:bg-red-600 active:scale-95 transition-all rounded-xl font-bold flex items-center justify-center gap-2 tracking-widest shadow-lg shadow-red-900/50">
-                        <IcoZap/> 고해상도 무대 입장 (생성 지연 주의)
+                        <IcoZap/> 자동 캐스팅 및 무대 입장
                     </button>
                 </div>
             </div>
@@ -333,7 +317,6 @@ const App = () => {
         const scene = novel?.scenes?.[stageId]?.[sceneId];
         const line = scene?.lines?.[lineIdx];
         const isAtEnd = !typing && line && lineIdx === scene.lines.length - 1;
-        
         const activePos = line?.position || "center";
         const isNarration = line?.speaker === "서술" || !line;
 
@@ -375,7 +358,7 @@ const App = () => {
                 {isTransitioning && (
                     <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center pointer-events-none bg-black/30 backdrop-blur-sm transition-opacity duration-300">
                         <div className="w-8 h-8 border-4 border-red-600 border-t-transparent rounded-full animate-spin opacity-80 mb-4"></div>
-                        <span className="text-[10px] font-bold tracking-[0.2em] text-red-500/80">GENERATING HQ ASSETS...</span>
+                        <span className="text-[10px] font-bold tracking-[0.2em] text-red-500/80">CASTING ACTORS...</span>
                     </div>
                 )}
 
