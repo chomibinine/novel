@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Visual Novel Engine - Director's Cut</title>
+    <title>Visual Novel Engine - Bulletproof</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -35,57 +35,56 @@
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
 
-/* ── 아이콘 ── */
 const IcoChevron = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>;
 const IcoZap = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
 
 /* ══════════════════════════════════════
-   🔥 디렉터 컷 핵심: 캐릭터 & 감정 시스템
+   🔥 무적의 더미 에셋 시스템 (Picsum)
 ══════════════════════════════════════ */
-const CHARACTERS = {
-    chomi: { base: "anime high school girl, long hair, school uniform, no glasses", seed: 777 },
-    bini: { base: "anime middle school boy, short hair, casual outfit", seed: 888 },
-    mc: { base: "anime young man, dark hair, casual coat", seed: 999 }
-};
-
-const EMOTIONS = {
-    neutral: "calm expression, looking forward",
-    happy: "smiling brightly, cheerful",
-    sad: "teary eyes, sad expression",
-    angry: "angry, frowning",
-    shy: "blushing, looking away",
-    bold: "confident smirk, energetic"
-};
-
 const SPEAKER_MAP = {
     "초미": "chomi",
     "비니": "bini",
     "주인공": "mc"
 };
 
+// 1. 캐릭터 함수 교체 (절대 안 터짐, seed로 일관성 유지)
 const getCharacterUrl = (charId, emotion = "neutral") => {
     if (emotion === "exit") return null;
-    const char = CHARACTERS[charId] || CHARACTERS.chomi;
-    const emo = EMOTIONS[emotion] || EMOTIONS.neutral;
-    // 시드 고정으로 얼굴 일관성 유지
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(char.base + ", " + emo)}?model=turbo&width=300&height=480&seed=${char.seed}&nologo=true`;
+    return `https://picsum.photos/seed/${charId + emotion}/300/480`;
 };
 
-const BG_POOL = ["anime street sunny day", "anime park sunset", "anime room night"];
+// 배경도 안전하게 Picsum으로 교체
+const getBgUrl = (seed) => {
+    return `https://picsum.photos/seed/bg_${seed}/1280/720`;
+};
 
+// 2. 안전한 preload 수정 (실패 시 Fallback 반환)
 const preloadImage = (src, timeout = 800) => {
-    if (!src) return Promise.resolve();
+    if (!src) return Promise.resolve(null);
     return new Promise(res => {
         const img = new Image();
         let done = false;
-        const finish = () => { if (!done) { done = true; res(); } };
-        img.onload = finish; img.onerror = finish; img.src = src;
-        setTimeout(finish, timeout);
+
+        const finish = (finalSrc) => {
+            if (!done) {
+                done = true;
+                res(finalSrc);
+            }
+        };
+
+        img.onload = () => finish(src);
+        img.onerror = () => {
+            console.warn("이미지 로드 실패 → Fallback 사용:", src);
+            finish("https://picsum.photos/300/480"); // Fallback
+        };
+
+        img.src = src;
+        setTimeout(() => finish(src), timeout);
     });
 };
 
 /* ══════════════════════════════════════
-   🔥 파서: 화자|감정|위치 추출 로직
+   🔥 파서 로직
 ══════════════════════════════════════ */
 function parseNovel(rawText, title="") {
     const lines = rawText.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
@@ -95,7 +94,7 @@ function parseNovel(rawText, title="") {
             return {
                 speaker: m[1].trim(),
                 emotion: (m[2] || "neutral").trim(),
-                position: (m[3] || "left").trim(), // 기본 배치 좌측
+                position: (m[3] || "left").trim(),
                 text: m[4].trim()
             };
         }
@@ -114,7 +113,7 @@ function parseNovel(rawText, title="") {
         const isRouteSplit = (i === segs.length - 2); 
 
         scenes[id] = {
-            bg: `https://image.pollinations.ai/prompt/${encodeURIComponent(BG_POOL[i%BG_POOL.length])}?width=1280&height=720&nologo=true&seed=${i+ts}`,
+            bg: getBgUrl(i+ts),
             lines: seg,
             isRouteSplit,
             choices: i < segs.length - 1 && !isRouteSplit ? [
@@ -129,7 +128,7 @@ function parseNovel(rawText, title="") {
     const routes = ["trust", "bold", "neutral"];
     routes.forEach(r => {
         scenes[`route_${r}_end`] = {
-            bg: `https://image.pollinations.ai/prompt/anime%20visual%20novel%20ending%20${r}?width=1280&height=720&nologo=true`,
+            bg: getBgUrl(`end_${r}`),
             lines: [{ speaker: "서술", text: `이야기는 ${r}의 결말로 이어졌습니다.`, position:"center" }],
             endStage: true
         };
@@ -139,7 +138,7 @@ function parseNovel(rawText, title="") {
 }
 
 /* ══════════════════════════════════════
-   메인 컴포넌트 (디렉터 엔진)
+   메인 컴포넌트
 ══════════════════════════════════════ */
 const App = () => {
     const [screen, setScreen] = useState('LIBRARY');
@@ -162,16 +161,10 @@ const App = () => {
     const [displayed, setDisplayed] = useState("");
     const [typing, setTyping] = useState(false);
     
-    // 🔥 좌우 캐릭터 독립 관리
     const [visuals, setVisuals] = useState({ bg: '', left: null, right: null, charVisible: false });
     const [isTransitioning, setIsTransitioning] = useState(false);
 
     const timerRef = useRef(null);
-
-    useEffect(() => {
-        const lib = localStorage.getItem('vn_lib'); if (lib) setLibrary(JSON.parse(lib));
-    }, []);
-    useEffect(() => { localStorage.setItem('vn_lib', JSON.stringify(library)); }, [library]);
 
     const getRoute = (state) => {
         const s = state.stats;
@@ -180,7 +173,6 @@ const App = () => {
         return "neutral";
     };
 
-    /* ── 씬 이동 및 캐릭터 자동 로딩 ── */
     const goToScene = async (nextId, forcedNovel = null, forcedStage = null) => {
         setIsTransitioning(true);
         const targetNovel = forcedNovel || novel;
@@ -191,7 +183,6 @@ const App = () => {
         let nextLeft = visuals.left;
         let nextRight = visuals.right;
 
-        // 첫 대사가 캐릭터인 경우 갱신
         if (firstLine && firstLine.speaker !== "서술") {
             const charId = SPEAKER_MAP[firstLine.speaker];
             if (charId) {
@@ -203,11 +194,17 @@ const App = () => {
 
         setVisuals(v => ({ ...v, bg: nextScene.bg, charVisible: false }));
         
-        // 변경된 캐릭터만 프리로드
         const preloads = [];
         if (nextLeft && nextLeft !== visuals.left) preloads.push(preloadImage(nextLeft, 800));
         if (nextRight && nextRight !== visuals.right) preloads.push(preloadImage(nextRight, 800));
-        await Promise.all(preloads);
+        
+        // preloadImage가 resolve한 안전한 URL들(또는 원래 URL)을 받음
+        const loadedUrls = await Promise.all(preloads);
+        
+        if(loadedUrls.length > 0) {
+            if (nextLeft && nextLeft !== visuals.left) nextLeft = loadedUrls[0];
+            if (nextRight && nextRight !== visuals.right) nextRight = loadedUrls[loadedUrls.length - 1];
+        }
 
         if(forcedNovel) { setNovel(forcedNovel); setStageId(targetStage); }
         setSceneId(nextId);
@@ -223,7 +220,6 @@ const App = () => {
         await goToScene('scene_0', n, 'st_1');
     };
 
-    /* ── 대사 진행 & 캐릭터 갱신 ── */
     const advance = () => {
         const scene = novel.scenes[stageId][sceneId];
         
@@ -240,7 +236,6 @@ const App = () => {
             const nextIdx = lineIdx + 1;
             const nextLine = scene.lines[nextIdx];
             
-            // 🔥 라인 넘길 때 화자/감정 변경 실시간 렌더링
             setVisuals(prev => {
                 const nv = { ...prev };
                 if (nextLine.speaker !== "서술") {
@@ -283,14 +278,10 @@ const App = () => {
         return () => clearInterval(timerRef.current);
     }, [sceneId, lineIdx, screen, isTransitioning]);
 
-    /* ══════════════════════════════════════
-       렌더링
-    ══════════════════════════════════════ */
     if (screen === 'LIBRARY') return (
         <div className="fixed inset-0 bg-zinc-950 text-white overflow-y-auto p-6 custom-scrollbar">
             <div className="max-w-3xl mx-auto mt-10">
-                <h1 className="text-3xl font-black mb-8 text-shimmer tracking-widest uppercase">Director's Stage</h1>
-                
+                <h1 className="text-3xl font-black mb-8 text-shimmer tracking-widest uppercase">Engine - Dev Mode</h1>
                 <div className="bg-zinc-900 p-6 rounded-2xl mb-10 border border-zinc-800 shadow-2xl">
                     <p className="text-xs text-zinc-400 mb-3 font-bold uppercase">형식: 화자|감정|위치: 대사 (퇴장 = exit)</p>
                     <textarea 
@@ -315,7 +306,6 @@ const App = () => {
         const line = scene?.lines?.[lineIdx];
         const isAtEnd = !typing && line && lineIdx === scene.lines.length - 1;
         
-        // 🔥 현재 말하는 사람 확인 (조명/스케일 연출용)
         const activePos = line?.position || "center";
         const isNarration = line?.speaker === "서술" || !line;
 
@@ -324,19 +314,19 @@ const App = () => {
                 <div className="absolute inset-0 bg-cover bg-center transition-all duration-700" 
                      style={{backgroundImage:`url(${visuals.bg})`, filter:'brightness(0.35)'}}/>
                 
-                {/* 🔥 무대 조명 & 캐릭터 렌더링 */}
                 <div className="absolute inset-0 pointer-events-none flex justify-center items-end">
-                    
                     {/* LEFT Character */}
                     {visuals.left && (
                         <img 
                             src={visuals.left} 
-                            className="absolute left-[2%] bottom-0 h-[85%] md:h-[90%] object-contain transition-all duration-500 ease-out origin-bottom" 
+                            // 3. 최후의 보루: onError 방어코드 추가
+                            onError={(e) => { e.target.src = "https://picsum.photos/300/480"; }}
+                            className="absolute left-[2%] bottom-[120px] md:bottom-[150px] h-[70%] object-cover rounded-xl transition-all duration-500 ease-out origin-bottom" 
                             style={{
                                 opacity: visuals.charVisible ? (activePos === "left" || isNarration ? 1 : 0.4) : 0,
                                 transform: visuals.charVisible ? (activePos === "left" ? "scale(1.02)" : "scale(0.95)") : "scale(0.95)",
                                 zIndex: activePos === "left" ? 20 : 10,
-                                filter: activePos === "left" ? "brightness(1.1) drop-shadow(0 0 20px rgba(0,0,0,0.5))" : "brightness(0.6)"
+                                filter: activePos === "left" ? "brightness(1.1) drop-shadow(0 0 20px rgba(0,0,0,0.5))" : "brightness(0.5)"
                             }} 
                         />
                     )}
@@ -345,26 +335,23 @@ const App = () => {
                     {visuals.right && (
                         <img 
                             src={visuals.right} 
-                            className="absolute right-[2%] bottom-0 h-[85%] md:h-[90%] object-contain transition-all duration-500 ease-out origin-bottom" 
+                            // 3. 최후의 보루: onError 방어코드 추가
+                            onError={(e) => { e.target.src = "https://picsum.photos/300/480"; }}
+                            className="absolute right-[2%] bottom-[120px] md:bottom-[150px] h-[70%] object-cover rounded-xl transition-all duration-500 ease-out origin-bottom" 
                             style={{
                                 opacity: visuals.charVisible ? (activePos === "right" || isNarration ? 1 : 0.4) : 0,
                                 transform: visuals.charVisible ? `scaleX(-1) ${activePos === "right" ? "scale(1.02)" : "scale(0.95)"}` : "scaleX(-1) scale(0.95)",
                                 zIndex: activePos === "right" ? 20 : 10,
-                                filter: activePos === "right" ? "brightness(1.1) drop-shadow(0 0 20px rgba(0,0,0,0.5))" : "brightness(0.6)"
+                                filter: activePos === "right" ? "brightness(1.1) drop-shadow(0 0 20px rgba(0,0,0,0.5))" : "brightness(0.5)"
                             }} 
                         />
                     )}
                 </div>
 
-                {/* 상단 HUD */}
                 <div className="absolute top-4 left-4 right-4 z-50 flex justify-between transition-opacity duration-300" style={{opacity: visuals.charVisible ? 1 : 0}}>
                     <button onClick={() => setScreen('LIBRARY')} className="bg-black/50 px-4 py-2 rounded-full text-xs font-bold border border-white/10 hover:bg-red-700 transition-colors">EXIT</button>
-                    <div className="flex gap-2">
-                        {Object.entries(gameState.stats).map(([k,v]) => <span key={k} className="bg-black/60 px-3 py-1 rounded-full text-[10px] font-black uppercase text-zinc-300 shadow-lg">{k} {v}</span>)}
-                    </div>
                 </div>
 
-                {/* 선택지 */}
                 {isAtEnd && scene?.choices && visuals.charVisible && (
                     <div className="absolute inset-x-0 bottom-48 px-4 md:px-10 z-50 animate-fade-in-up">
                         {scene.choices.map((c, i) => (
@@ -375,7 +362,6 @@ const App = () => {
                     </div>
                 )}
 
-                {/* 대화창 */}
                 {scene && (
                     <div className="dialog-outer transition-opacity duration-300" onClick={advance} style={{opacity: visuals.charVisible ? 1 : 0}}>
                         <div className="dialog-inner shadow-2xl border-t border-white/10">
@@ -394,7 +380,6 @@ const App = () => {
                     </div>
                 )}
 
-                {/* 엔딩 연출 */}
                 {isAtEnd && scene?.endStage && visuals.charVisible && (
                     <div className="absolute inset-0 bg-black/90 z-[60] flex flex-col items-center justify-center p-10 text-center animate-fade-in-up backdrop-blur-md">
                         <h2 className="text-5xl font-black mb-3 text-red-600 tracking-widest text-shadow-lg">CURTAIN CALL</h2>
