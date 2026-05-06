@@ -3,96 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Visual Novel Engine - Auto Branch</title>
-
+    <title>Visual Novel Engine - Pro</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
-
     <style>
         @keyframes fadeInUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
         @keyframes blink    { 0%,100%{opacity:1} 50%{opacity:0} }
-        @keyframes shimmer  { 0%{background-position:-200% center} 100%{background-position:200% center} }
-        @keyframes bounce   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
-
-        * { box-sizing:border-box; }
-        body {
-            margin:0; background:#000;
-            font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
-            overscroll-behavior:none;
-            -webkit-user-select:none; user-select:none;
-        }
-
+        @keyframes pulse    { 0%,100%{opacity:0.4;transform:scale(1)} 50%{opacity:0.8;transform:scale(1.05)} }
+        body { margin:0; background:#000; font-family:'Pretendard', sans-serif; overscroll-behavior:none; -webkit-user-select:none; user-select:none; }
         .animate-fade-in-up { animation:fadeInUp 0.5s ease-out forwards; }
-        .cursor-blink        { animation:blink 0.8s step-end infinite; }
-        .bounce-anim         { animation:bounce 1s ease-in-out infinite; }
-
-        .custom-scrollbar::-webkit-scrollbar       { width:4px; }
-        .custom-scrollbar::-webkit-scrollbar-track  { background:#18181b; }
-        .custom-scrollbar::-webkit-scrollbar-thumb  { background:#dc2626; border-radius:4px; }
-
-        .text-shimmer {
-            background:linear-gradient(90deg,#ef4444,#fca5a5,#ef4444);
-            background-size:200% auto;
-            -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-            animation:shimmer 2s linear infinite;
-        }
-
-        /* ══ 대화창 ══
-           position:absolute로 화면 하단에 고정.
-           높이를 px로 명시해서 절대 늘어나지 않음. */
-        .dialog-outer {
-            position: absolute;
-            bottom: 0; left: 0; right: 0;
-            z-index: 50;
-            padding: 0 12px 16px 12px;
-        }
-        @media(min-width:768px){ .dialog-outer{ padding:0 32px 28px 32px; } }
-
-        .dialog-inner {
-            background: rgba(5,5,5,0.93);
-            border: 2px solid rgba(255,255,255,0.14);
-            border-radius: 18px;
-            backdrop-filter: blur(14px);
-            box-shadow: 0 0 60px rgba(0,0,0,0.85);
-            overflow: hidden;
-        }
-
-        /* 텍스트 영역 ─ 높이 고정이 핵심 */
-        .dialog-text {
-            height: 110px;   /* 모바일 고정 */
-            overflow-y: auto;
-            padding: 8px 20px 4px 20px;
-            cursor: pointer;
-        }
+        .cursor-blink { animation:blink 0.8s step-end infinite; }
+        .custom-scrollbar::-webkit-scrollbar { width:4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background:#18181b; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background:#dc2626; border-radius:4px; }
+        .dialog-outer { position: absolute; bottom: 0; left: 0; right: 0; z-index: 50; padding: 0 12px 16px 12px; }
+        .dialog-inner { background: rgba(5,5,5,0.93); border: 2px solid rgba(255,255,255,0.14); border-radius: 18px; backdrop-filter: blur(14px); box-shadow: 0 0 60px rgba(0,0,0,0.85); overflow: hidden; }
+        .dialog-text { height: 110px; overflow-y: auto; padding: 8px 20px 4px 20px; cursor: pointer; }
         @media(min-width:768px){ .dialog-text{ height:130px; } }
-
-        .speaker-badge {
-            display: inline-block;
-            background: #dc2626;
-            color: #fff;
-            font-size: 13px;
-            font-weight: 900;
-            letter-spacing: 0.05em;
-            padding: 5px 22px 5px 14px;
-            margin: 10px 0 0 14px;
-            clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%);
-        }
-
-        /* 선택지 */
-        .choice-btn {
-            width:100%; padding:13px 18px;
-            background:rgba(8,8,8,0.88); border:1px solid rgba(255,255,255,0.12);
-            border-radius:10px; color:#e4e4e7; font-size:14px; font-weight:700;
-            text-align:left; display:flex; align-items:center; justify-content:space-between;
-            cursor:pointer; backdrop-filter:blur(8px);
-            transition:border-color .2s, background .2s, padding-left .15s, transform .1s;
-            margin-bottom:8px;
-        }
-        .choice-btn:hover  { border-color:#dc2626; background:rgba(220,38,38,0.09); padding-left:22px; }
-        .choice-btn:active { transform:scale(0.98); }
+        .speaker-badge { display: inline-block; background: #dc2626; color: #fff; font-size: 13px; font-weight: 900; padding: 5px 22px 5px 14px; margin: 10px 0 0 14px; clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 50%, calc(100% - 9px) 100%, 0 100%); }
+        .choice-btn { width:100%; padding:13px 18px; background:rgba(8,8,8,0.88); border:1px solid rgba(255,255,255,0.12); border-radius:10px; color:#e4e4e7; font-size:14px; font-weight:700; text-align:left; display:flex; align-items:center; justify-content:space-between; cursor:pointer; margin-bottom:8px; transition: all 0.2s; }
+        .choice-btn:hover { border-color:#dc2626; background:rgba(220,38,38,0.09); padding-left:22px; }
+        .choice-btn:disabled { opacity: 0.4; cursor: not-allowed; filter: grayscale(1); }
+        .text-shimmer { background:linear-gradient(90deg,#ef4444,#fca5a5,#ef4444); background-size:200% auto; -webkit-background-clip:text; -webkit-text-fill-color:transparent; animation:shimmer 2s linear infinite; }
+        @keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
     </style>
 </head>
 <body>
@@ -101,547 +37,271 @@
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
 
-/* ── 아이콘 ── */
-const Svg = ({d,size=20,cls=""}) =>
-    <svg width={size} height={size} className={cls} viewBox="0 0 24 24" fill="none"
-         stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d={d}/>
-    </svg>;
-const IcoChevron = ({s,c}) => <Svg size={s} cls={c} d="M9 18l6-6-6-6"/>;
-const IcoPlay    = ({s,c}) => <svg width={s||20} height={s||20} className={c} viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
-const IcoUpload  = ({s,c}) => <Svg size={s} cls={c} d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>;
-const IcoZap     = ({s,c}) => <svg width={s||20} height={s||20} className={c} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
-const IcoBack    = ({s,c}) => <Svg size={s} cls={c} d="M19 12H5M12 19l-7-7 7-7"/>;
-const IcoTrash   = ({s,c}) => <Svg size={s} cls={c} d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>;
-const IcoBook    = ({s,c}) => <Svg size={s} cls={c} d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 014 17V5a2 2 0 012-2h14v14H6.5A2.5 2.5 0 004 19.5z"/>;
-const IcoDl      = ({s,c}) => <Svg size={s} cls={c} d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"/>;
+/* ── 유틸리티 및 아이콘 ── */
+const IcoChevron = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>;
+const IcoZap = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
+
+/* ── 이미지 엔진 설정 ── */
+const BG_POOL = ["anime library night", "anime garden sunset", "anime city rain", "anime room moonlight"];
+const getTurboUrl = (sceneId, seed) => {
+    const type = sceneId?.endsWith('_a') ? 'a' : sceneId?.endsWith('_b') ? 'b' : 'main';
+    const prompts = { main: 'cute anime girl smiling', a: 'bold anime girl shouting', b: 'shy anime girl blushing' };
+    return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompts[type])}?model=turbo&width=300&height=480&nologo=true&seed=${seed}`;
+};
 
 /* ══════════════════════════════════════
-   자동 분기 파서
+   파서: 루트 분기점 및 데이터 구조화
 ══════════════════════════════════════ */
-const CHOICE_BANKS = [
-    [{text:"적극적으로 행동한다",mood:"bold"},{text:"신중하게 지켜본다",mood:"cautious"}],
-    [{text:"솔직하게 말한다",mood:"honest"},{text:"적당히 둘러댄다",mood:"evasive"}],
-    [{text:"가까이 다가간다",mood:"close"},{text:"거리를 유지한다",mood:"distant"}],
-    [{text:"감정을 드러낸다",mood:"emotional"},{text:"냉정함을 유지한다",mood:"calm"}],
-    [{text:"직접 물어본다",mood:"direct"},{text:"혼자 생각한다",mood:"introspective"}],
-    [{text:"동의한다",mood:"agree"},{text:"반박한다",mood:"disagree"}],
-    [{text:"도움을 청한다",mood:"help"},{text:"스스로 해결한다",mood:"solo"}],
-    [{text:"믿어보기로 한다",mood:"trust"},{text:"한 발 물러선다",mood:"retreat"}],
-];
-const REACTIONS = {
-    bold:["그 결정이 모든 것을 바꾸었다.","망설임 없는 행동이었다.","순간, 흐름이 달라졌다."],
-    cautious:["잠시 멈추고 상황을 살폈다.","침묵 속에도 많은 것이 읽혔다.","조용한 관찰이 답을 가져왔다."],
-    honest:["말이 나오자마자 공기가 바뀌었다.","진심은 언제나 무언가를 건드린다.","거짓 없는 말이 더 날카로웠다."],
-    evasive:["적당한 거리는 때로 현명하다.","모든 걸 말할 필요는 없었다.","침묵이 가장 많은 걸 말할 때도 있다."],
-    close:["그 거리가 줄어들 때 심장이 빨라졌다.","가까워질수록 보이는 것들이 있었다.","두 사람 사이의 공기가 달랐다."],
-    distant:["거리를 두는 것도 선택이었다.","멀리서 바라보는 시선이 더 많은 걸 담았다.","간격이 오히려 선명하게 만들었다."],
-    emotional:["감정이 터져나왔다.","마음이 앞서는 순간이 있다.","감정은 거짓말을 하지 않는다."],
-    calm:["내면의 파도를 다스렸다.","흔들리지 않는 것처럼 보였다.","냉정함 아래 무언가 끓고 있었다."],
-    direct:["정면으로 물었다. 대답은 예상 밖이었다.","직접적인 질문이 벽을 허물었다.","돌아온 대답은 많은 걸 담았다."],
-    introspective:["혼자 생각하는 시간이 필요했다.","내면으로 들어가 답을 찾았다.","고요함 속에 실마리가 있었다."],
-    agree:["동의하는 순간, 연결이 생겼다.","같은 방향을 바라보는 느낌이었다.","그 말이 옳다는 걸 인정했다."],
-    disagree:["반박했다. 긴장감이 흘렀다.","다른 생각은 충돌을 만들기도 한다.","마찰이 오히려 더 많은 걸 보여줬다."],
-    help:["도움을 청하는 건 용기가 필요했다.","손을 내밀자 누군가 잡아주었다.","혼자가 아니라는 사실이 달랐다."],
-    solo:["혼자서 해결하기로 했다.","누구에게도 기대지 않는 무게였다.","독립적인 선택에는 대가가 따른다."],
-    trust:["믿기로 했다. 그것은 도박이었다.","신뢰는 가장 위험한 무기다.","믿음이 전환점이 되었다."],
-    retreat:["한 걸음 물러섰다. 숨이 돌아왔다.","물러서는 것도 전략이다.","거리는 명확함을 준다."],
-};
-const reaction = (mood) => { const a=REACTIONS[mood]||REACTIONS.bold; return a[Math.floor(Math.random()*a.length)]; };
-
-/* ── 이미지 URL ── */
-const BG_POOL = [
-    "anime visual novel background luxury apartment night city rain",
-    "anime visual novel background dark office late night lamp warm light",
-    "anime visual novel background rooftop city sunset golden hour",
-    "anime visual novel background cafe rainy window bokeh lights",
-    "anime visual novel background bedroom moonlight soft curtain",
-    "anime visual novel background school hallway empty afternoon",
-    "anime visual novel background park cherry blossom romantic evening",
-    "anime visual novel background bar neon lights night atmospheric",
-];
-
-// 메인 씬: 부드럽고 자연스러운 캐릭터
-const CHAR_MAIN = [
-    "anime beautiful girl long hair school uniform gentle smile standing full body",
-    "anime beautiful girl silver white hair elegant dress confident expression standing full body",
-    "anime beautiful girl dark black hair office suit serious gaze standing full body",
-    "anime beautiful girl blonde hair casual clothes warm smile standing full body",
-    "anime beautiful girl red hair fantasy outfit determined expression standing full body",
-    "anime beautiful girl blue hair kimono shy expression standing full body",
-];
-// 분기 A: 적극적이고 활기찬 표정
-const CHAR_A = [
-    "anime beautiful girl excited bold expression open mouth surprised pink hair standing full body",
-    "anime beautiful girl confident action pose energetic smile short hair standing full body",
-    "anime beautiful girl passionate determined fists expression twin tails standing full body",
-    "anime beautiful girl happy jumping cheerful expression colorful hair standing full body",
-    "anime beautiful girl forward leaning assertive expression wavy hair standing full body",
-    "anime beautiful girl bright enthusiastic expression side ponytail standing full body",
-];
-// 분기 B: 차분하고 내성적인 표정
-const CHAR_B = [
-    "anime beautiful girl shy gentle downcast eyes blue hair standing full body",
-    "anime beautiful girl calm cool composed expression silver hair standing full body",
-    "anime beautiful girl thoughtful hand on chin purple hair standing full body",
-    "anime beautiful girl reserved soft expression hands clasped green hair standing full body",
-    "anime beautiful girl quiet introspective looking away dark blue hair standing full body",
-    "anime beautiful girl serene peaceful expression white hair standing full body",
-];
-
-const bgUrl   = (i)           => `https://image.pollinations.ai/prompt/${encodeURIComponent(BG_POOL[i%BG_POOL.length])}?width=1280&height=720&nologo=true&seed=${i*41+3}`;
-const charUrl = (pool, i, s)  => `https://image.pollinations.ai/prompt/${encodeURIComponent(pool[i%pool.length])}?width=512&height=900&nologo=true&seed=${s}`;
-
 function parseNovel(rawText, title="") {
     const lines = rawText.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
-
     const dlines = lines.map(line => {
         const m = line.match(/^([^:：]{1,12})[：:]\s*(.+)$/);
-        if (m) return { speaker:m[1].trim(), text:m[2].trim() };
-        if (line.startsWith('"')||line.startsWith('"')||line.startsWith("'")) return { speaker:"???", text:line };
-        return { speaker:"서술", text:line };
+        return m ? { speaker:m[1].trim(), text:m[2].trim() } : { speaker:"서술", text:line };
     });
 
-    const cnt={};
-    dlines.forEach(l=>{ if(l.speaker!=="서술"&&l.speaker!=="???") cnt[l.speaker]=(cnt[l.speaker]||0)+1; });
-    const top = Object.entries(cnt).sort((a,b)=>b[1]-a[1]).map(e=>e[0]);
-    const protagonist = top[0]||"주인공";
-    const heroine     = top[1]||"히로인";
-
-    const LPS = Math.max(3, Math.min(6, Math.floor(dlines.length/5)));
+    const heroine = "히로인";
+    const LPS = 4; 
     const segs = [];
-    for (let i=0;i<dlines.length;i+=LPS) segs.push(dlines.slice(i,i+LPS));
+    for (let i=0; i<dlines.length; i+=LPS) segs.push(dlines.slice(i, i+LPS));
 
-    const mkId = (i,b) => `scene_${i}${b?'_'+b:''}`;
     const scenes = {};
-    const stageId = 'stage_'+Date.now();
     const ts = Date.now();
 
     segs.forEach((seg, i) => {
-        const isLast = i===segs.length-1;
-        const nextMain = isLast ? null : mkId(i+1,'');
-        const cb = CHOICE_BANKS[i % CHOICE_BANKS.length];
+        const id = `scene_${i}`;
+        const isRouteSplit = (i === segs.length - 2); // 마지막 직전이 루트 분기
 
-        if (!isLast) {
-            // 메인 씬
-            scenes[mkId(i,'')] = {
-                bg: bgUrl(i),
-                character: { name:heroine, charImage: charUrl(CHAR_MAIN, i, ts+i*7) },
-                lines: seg,
-                choices: [
-                    { text:cb[0].text, next:mkId(i,'a'), mood:cb[0].mood },
-                    { text:cb[1].text, next:mkId(i,'b'), mood:cb[1].mood },
-                ]
-            };
-            // 분기 A ─ 적극적 표정
-            scenes[mkId(i,'a')] = {
-                bg: bgUrl(i+1),
-                character: { name:heroine, charImage: charUrl(CHAR_A, i, ts+i*13+100) },
-                lines: [
-                    { speaker:"서술", text: reaction(cb[0].mood) },
-                    { speaker:"서술", text:"그 선택이 다음 순간을 결정했다." }
-                ],
-                nextScene: nextMain
-            };
-            // 분기 B ─ 차분한 표정
-            scenes[mkId(i,'b')] = {
-                bg: bgUrl(i+2),
-                character: { name:heroine, charImage: charUrl(CHAR_B, i, ts+i*17+200) },
-                lines: [
-                    { speaker:"서술", text: reaction(cb[1].mood) },
-                    { speaker:"서술", text:"조용한 선택이었지만, 무언가 달라지기 시작했다." }
-                ],
-                nextScene: nextMain
-            };
-        } else {
-            scenes[mkId(i,'')] = {
-                bg: bgUrl(i),
-                character: { name:heroine, charImage: charUrl(CHAR_MAIN, i, ts+i*7) },
-                lines: [...seg, {speaker:"서술",text:"— End —"}],
-                endStage: true
-            };
-        }
+        scenes[id] = {
+            bg: `https://image.pollinations.ai/prompt/${encodeURIComponent(BG_POOL[i%BG_POOL.length])}?width=1280&height=720&nologo=true&seed=${i+ts}`,
+            lines: seg,
+            isRouteSplit,
+            choices: i < segs.length - 1 ? [
+                { text: "🤝 믿음을 보여준다", next: `${id}_a`, mood: "trust" },
+                { text: "⚡ 단호하게 행동한다", next: `${id}_b`, mood: "bold" },
+                { text: "🔒 비밀을 묻는다", next: `${id}_a`, mood: "trust", requireStat: "trust", requireMin: 2 }
+            ] : null
+        };
+
+        // 결과 씬 A (trust 성향)
+        scenes[`${id}_a`] = { lines: [{speaker:"서술", text:"당신의 신뢰가 공기를 부드럽게 만들었다."}], nextScene: `scene_${i+1}` };
+        // 결과 씬 B (bold 성향)
+        scenes[`${id}_b`] = { lines: [{speaker:"서술", text:"당신의 결단력이 상황을 급변시켰다."}], nextScene: `scene_${i+1}` };
     });
 
-    return {
-        id: 'novel_'+ts,
-        meta: {
-            title: title||`스토리 (${new Date().toLocaleTimeString()})`,
-            coverBg: bgUrl(0),
-            description: `${segs.length}개 장면 · ${segs.length-1}개 분기`,
-            protagonist: { name:protagonist, pov:"PLAYER POV" },
-            statsConfig: [],
-        },
-        stages: [{ id:stageId, title:"제 1화", firstScene:mkId(0,''), isUnlocked:true }],
-        scenes: { [stageId]: scenes },
-        _branchCount: segs.length-1,
-        _sceneCount:  segs.length,
-    };
+    // 루트 엔딩 씬들
+    const routes = ["trust", "bold", "neutral"];
+    routes.forEach(r => {
+        scenes[`route_${r}_end`] = {
+            bg: `https://image.pollinations.ai/prompt/anime%20visual%20novel%20ending%20${r}?width=1280&height=720&nologo=true`,
+            lines: [{ speaker: "서술", text: `당신이 걸어온 길은 ${r}의 결말로 이어졌습니다.` }, { speaker: "서술", text: "— FIN —" }],
+            endStage: true,
+            cg: { id: `cg_${r}`, url: `https://image.pollinations.ai/prompt/anime%20girl%20special%20${r}?width=1024&height=1024&nologo=true` }
+        };
+    });
+
+    return { id: 'novel_'+ts, meta: { title: title || "새로운 이야기", coverBg: scenes["scene_0"].bg }, stages: [{id:'st_1', firstScene:'scene_0'}], scenes: { 'st_1': scenes } };
 }
 
 /* ══════════════════════════════════════
-   캐릭터 이미지 (로딩 실루엣 → 페이드인)
-══════════════════════════════════════ */
-const CharImage = ({ src }) => {
-    const [loaded, setLoaded] = useState(false);
-    const [err,    setErr]    = useState(false);
-    useEffect(()=>{ setLoaded(false); setErr(false); }, [src]);
-
-    return (
-        <div style={{position:'absolute',inset:0,zIndex:10,pointerEvents:'none'}}>
-            {/* 로딩 중 실루엣 */}
-            {!loaded && !err && (
-                <div style={{
-                    position:'absolute', bottom:0, left:'50%', transform:'translateX(-50%)',
-                    width:'60%', height:'80%',
-                    background:'linear-gradient(180deg,rgba(220,38,38,0.06) 0%,rgba(220,38,38,0.02) 70%,transparent 100%)',
-                    borderRadius:'48% 48% 0 0',
-                }}/>
-            )}
-            {/* 실제 이미지: 전체화면 꽉 채움 */}
-            {!err && (
-                <img
-                    src={src} alt=""
-                    onLoad={()=>setLoaded(true)}
-                    onError={()=>setErr(true)}
-                    style={{
-                        position:'absolute', inset:0,
-                        width:'100%', height:'100%',
-                        objectFit:'cover',
-                        objectPosition:'top center',
-                        opacity: loaded ? 0.92 : 0,
-                        transition:'opacity 1s ease',
-                    }}
-                />
-            )}
-            {/* 하단 그라디언트 - 대화창과 자연 연결 */}
-            <div style={{
-                position:'absolute', bottom:0, left:0, right:0, height:'50%',
-                background:'linear-gradient(to top, #000 0%, rgba(0,0,0,0.55) 50%, transparent 100%)',
-                zIndex:1,
-            }}/>
-        </div>
-    );
-};
-
-/* ══════════════════════════════════════
-   메인 앱
+   메인 컴포넌트
 ══════════════════════════════════════ */
 const App = () => {
-    const [screen,   setScreen]   = useState('LIBRARY');
-    const [library,  setLibrary]  = useState([]);
-    const [novel,    setNovel]    = useState(null);
-    const [rawText,  setRawText]  = useState("");
-    const [titleIn,  setTitleIn]  = useState("");
-    const [appendTo, setAppendTo] = useState("NEW");
-
-    const [stageId,   setStageId]   = useState(null);
-    const [sceneId,   setSceneId]   = useState(null);
-    const [lineIdx,   setLineIdx]   = useState(0);
+    const [screen, setScreen] = useState('LIBRARY');
+    const [library, setLibrary] = useState([]);
+    const [novel, setNovel] = useState(null);
+    const [rawText, setRawText] = useState("");
+    
+    // 게임 엔진의 핵심: 상태와 갤러리
+    const [stageId, setStageId] = useState(null);
+    const [sceneId, setSceneId] = useState(null);
+    const [lineIdx, setLineIdx] = useState(0);
+    const [gameState, setGameState] = useState({ choices: [], stats: {} });
+    const [gallery, setGallery] = useState([]);
     const [displayed, setDisplayed] = useState("");
-    const [typing,    setTyping]    = useState(false);
+    const [typing, setTyping] = useState(false);
 
     const timerRef = useRef(null);
-    const textRef  = useRef(null);
 
-    /* ── 저장/복원: 원본 키 'novel_library_local' ── */
-    useEffect(()=>{
-        try{ const s=localStorage.getItem('novel_library_local'); if(s) setLibrary(JSON.parse(s)); }catch(e){}
-    },[]);
-    useEffect(()=>{
-        try{ localStorage.setItem('novel_library_local', JSON.stringify(library)); }catch(e){}
-    },[library]);
+    // 로컬 스토리지 연동
+    useEffect(() => {
+        const lib = localStorage.getItem('vn_lib');
+        if (lib) setLibrary(JSON.parse(lib));
+        const gal = localStorage.getItem('vn_gal');
+        if (gal) setGallery(JSON.parse(gal));
+    }, []);
 
-    /* ── 파일 업로드 ── */
-    const handleFile = (e) => {
-        const file=e.target.files[0]; if(!file) return;
-        const ext=file.name.split('.').pop().toLowerCase();
-        if(ext==='txt'){
-            const r=new FileReader(); r.onload=ev=>setRawText(ev.target.result); r.readAsText(file);
-        } else if(ext==='docx'){
-            const r=new FileReader();
-            r.onload=async ev=>{ const res=await mammoth.extractRawText({arrayBuffer:ev.target.result}); setRawText(res.value); };
-            r.readAsArrayBuffer(file);
-        } else if(ext==='json'){
-            const r=new FileReader();
-            r.onload=ev=>{ try{ const d=JSON.parse(ev.target.result); setLibrary(prev=>[d,...prev]); }catch(err){alert("JSON 오류");} };
-            r.readAsText(file);
-        }
-        e.target.value=null;
+    useEffect(() => { localStorage.setItem('vn_lib', JSON.stringify(library)); }, [library]);
+    useEffect(() => { localStorage.setItem('vn_gal', JSON.stringify(gallery)); }, [gallery]);
+
+    /* ── 세이브/로드 ── */
+    const saveGame = () => {
+        const data = { novelId: novel.id, stageId, sceneId, lineIdx, gameState, time: Date.now() };
+        localStorage.setItem("vn_save_data", JSON.stringify(data));
+        console.log("자동 저장 완료");
     };
 
-    /* ── 생성 ── */
-    const handleGenerate = () => {
-        if(!rawText.trim()){ alert("텍스트를 입력해주세요."); return; }
-        const n = parseNovel(rawText, titleIn.trim());
+    const loadGame = () => {
+        const raw = localStorage.getItem("vn_save_data");
+        if (!raw) return alert("저장된 데이터가 없습니다.");
+        const d = JSON.parse(raw);
+        const target = library.find(x => x.id === d.novelId);
+        if (!target) return alert("해당 원본 소설을 찾을 수 없습니다.");
+        setNovel(target); setStageId(d.stageId); setSceneId(d.sceneId); setLineIdx(d.lineIdx); setGameState(d.gameState);
+        setScreen("PLAY");
+    };
 
-        if(appendTo==="NEW"){
-            setLibrary(prev=>[n,...prev]);
-            setRawText(""); setTitleIn(""); setAppendTo("NEW");
-            playNovel(n);
-        } else {
-            setLibrary(prev=>{
-                const lib=[...prev];
-                const idx=lib.findIndex(x=>x.id===appendTo);
-                if(idx!==-1){
-                    const target=JSON.parse(JSON.stringify(lib[idx]));
-                    const newStageId='stage_'+Date.now();
-                    const newStage={...n.stages[0], id:newStageId, title:`제 ${target.stages.length+1}화`};
-                    target.stages.push(newStage);
-                    target.scenes[newStageId]=n.scenes[n.stages[0].id];
-                    lib[idx]=target;
-                }
-                return lib;
-            });
-            setRawText(""); setTitleIn(""); setAppendTo("NEW");
-            alert("에피소드가 추가되었습니다!");
+    /* ── 루트 로직 ── */
+    const getRoute = (state) => {
+        const s = state.stats;
+        if ((s.trust || 0) >= 2) return "trust";
+        if ((s.bold || 0) >= 2) return "bold";
+        return "neutral";
+    };
+
+    /* ── 게임 진행 ── */
+    const advance = () => {
+        const scene = novel.scenes[stageId][sceneId];
+        if (typing) { setDisplayed(scene.lines[lineIdx].text); setTyping(false); clearInterval(timerRef.current); return; }
+        
+        if (lineIdx < scene.lines.length - 1) {
+            setLineIdx(prev => prev + 1);
+        } else if (scene.isRouteSplit) {
+            const route = getRoute(gameState);
+            setSceneId(`route_${route}_end`);
+            setLineIdx(0);
+        } else if (scene.nextScene) {
+            setSceneId(scene.nextScene);
+            setLineIdx(0);
         }
     };
 
-    /* ── 내보내기 / 삭제 ── */
-    const exportNovel = (e,n) => {
-        e.stopPropagation();
-        const a=document.createElement('a');
-        a.href="data:text/json;charset=utf-8,"+encodeURIComponent(JSON.stringify(n,null,2));
-        a.download=`${n.meta.title}.json`; a.click();
-    };
-    const deleteNovel = (e,id) => {
-        e.stopPropagation();
-        if(confirm("삭제하시겠습니까?")) setLibrary(prev=>prev.filter(x=>x.id!==id));
+    const pickChoice = (c) => {
+        setGameState(prev => ({
+            choices: [...prev.choices, c.mood],
+            stats: { ...prev.stats, [c.mood]: (prev.stats[c.mood] || 0) + 1 }
+        }));
+        setSceneId(c.next); setLineIdx(0);
     };
 
-    /* ── 플레이 시작 ── */
-    const playNovel = (n) => {
-        setNovel(n);
-        const sid=n.stages[0].id;
-        setStageId(sid); setSceneId(n.stages[0].firstScene); setLineIdx(0); setScreen('PLAY');
-    };
-
-    const sceneData = (novel&&stageId&&sceneId) ? novel.scenes[stageId]?.[sceneId] : null;
+    /* ── CG 해금 ── */
+    useEffect(() => {
+        if (screen === 'PLAY' && novel) {
+            const scene = novel.scenes[stageId][sceneId];
+            if (scene?.cg) {
+                setGallery(prev => prev.find(x => x.id === scene.cg.id) ? prev : [...prev, scene.cg]);
+            }
+            saveGame(); // 씬 이동마다 자동 저장
+        }
+    }, [sceneId]);
 
     /* ── 타이핑 효과 ── */
-    useEffect(()=>{
-        if(screen!=='PLAY'||!sceneData) return;
-        const line=sceneData.lines[lineIdx]; if(!line) return;
-        setTyping(true); setDisplayed(""); let i=0;
-        timerRef.current=setInterval(()=>{
-            if(i<line.text.length){ setDisplayed(line.text.substring(0,++i)); }
-            else{ clearInterval(timerRef.current); setTyping(false); }
-        },22);
-        return ()=>clearInterval(timerRef.current);
-    },[sceneId,lineIdx,screen]);
+    useEffect(() => {
+        if (screen !== 'PLAY' || !novel) return;
+        const line = novel.scenes[stageId][sceneId].lines[lineIdx];
+        setDisplayed(""); setTyping(true);
+        let i = 0;
+        timerRef.current = setInterval(() => {
+            if (i < line.text.length) setDisplayed(line.text.substring(0, ++i));
+            else { setTyping(false); clearInterval(timerRef.current); }
+        }, 30);
+        return () => clearInterval(timerRef.current);
+    }, [sceneId, lineIdx, screen]);
 
-    /* ── 텍스트 자동 스크롤 ── */
-    useEffect(()=>{
-        if(textRef.current) textRef.current.scrollTop=textRef.current.scrollHeight;
-    },[displayed]);
-
-    const advance = () => {
-        if(typing){
-            clearInterval(timerRef.current);
-            setDisplayed(sceneData.lines[lineIdx].text);
-            setTyping(false); return;
-        }
-        if(lineIdx<sceneData.lines.length-1) setLineIdx(l=>l+1);
-        else if(sceneData.nextScene){ setSceneId(sceneData.nextScene); setLineIdx(0); }
-    };
-    const pickChoice = (c) => { setSceneId(c.next); setLineIdx(0); };
-
-    const isAtEnd     = !typing&&sceneData?.lines&&lineIdx===sceneData.lines.length-1;
-    const showChoices = isAtEnd&&sceneData?.choices?.length;
-    const showEnd     = isAtEnd&&sceneData?.endStage;
-
-    /* ══ LIBRARY 화면 ══ */
-    if(screen==='LIBRARY') return (
-        <div className="fixed inset-0 bg-zinc-950 text-white overflow-y-auto custom-scrollbar">
-            <div className="max-w-4xl mx-auto px-4 py-10 pb-20">
-
-                {/* 헤더 */}
-                <div className="flex items-center gap-3 mb-8">
-                    <IcoBook s={30} c="text-red-500 shrink-0"/>
-                    <h1 className="text-3xl font-black uppercase tracking-widest text-shimmer">Visual Novel Engine</h1>
+    if (screen === 'LIBRARY') return (
+        <div className="fixed inset-0 bg-zinc-950 text-white overflow-y-auto p-6 custom-scrollbar">
+            <div className="max-w-3xl mx-auto">
+                <h1 className="text-3xl font-black mb-8 text-shimmer">VN ENGINE PRO</h1>
+                
+                <div className="bg-zinc-900 p-6 rounded-2xl mb-10 border border-zinc-800">
+                    <textarea 
+                        value={rawText} onChange={e=>setRawText(e.target.value)}
+                        placeholder="대본을 입력하세요... (화자: 대사)"
+                        className="w-full h-40 bg-black p-4 rounded-xl mb-4 outline-none border border-zinc-700 focus:border-red-500 transition-all"
+                    />
+                    <button onClick={() => {
+                        const n = parseNovel(rawText);
+                        setLibrary([n, ...library]);
+                        setNovel(n); setStageId('st_1'); setSceneId('scene_0'); setLineIdx(0);
+                        setGameState({choices:[], stats:{}}); setScreen('PLAY');
+                    }} className="w-full py-4 bg-red-700 rounded-xl font-bold flex items-center justify-center gap-2">
+                        <IcoZap/> 이야기 생성 및 시작
+                    </button>
+                    <button onClick={loadGame} className="w-full mt-2 py-2 text-zinc-500 text-sm font-bold">마지막 세이브 불러오기</button>
                 </div>
 
-                {/* 변환기 패널 */}
-                <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-10 shadow-2xl">
-                    <div className="flex items-center justify-between px-5 py-3 bg-zinc-800/80 border-b border-zinc-700 flex-wrap gap-2">
-                        <div className="flex items-center gap-2 text-sm font-bold text-green-400">
-                            <IcoZap s={16}/> 자동 분기 생성기 (API 불필요)
-                        </div>
-                        <label className="flex items-center gap-1.5 text-xs text-zinc-300 hover:text-white cursor-pointer bg-zinc-700 hover:bg-zinc-600 px-3 py-1.5 rounded-lg transition-colors">
-                            <input type="file" accept=".txt,.docx,.json" onChange={handleFile} className="hidden"/>
-                            <IcoUpload s={13}/> 파일 불러오기
-                        </label>
-                    </div>
-
-                    <div className="p-5">
-                        <input
-                            value={titleIn} onChange={e=>setTitleIn(e.target.value)}
-                            placeholder="게임 제목 (선택사항)"
-                            className="w-full bg-black/50 border border-zinc-700 focus:border-red-500 rounded-xl px-4 py-2.5 text-sm text-white outline-none mb-3 transition-colors"
-                        />
-                        <textarea
-                            value={rawText} onChange={e=>setRawText(e.target.value)}
-                            placeholder={"소설, 대화문, 시나리오 등 어떤 텍스트든 붙여넣으세요.\n\n• '화자: 대사' 형식 자동 인식\n• N줄마다 2개 선택지 자동 삽입\n• 선택마다 다른 표정의 캐릭터 생성\n\n예) 나루토: 오늘 좀 이상한 것 같아.\n    히나타: 무슨 말이에요...?"}
-                            className="w-full h-48 bg-black/50 border border-zinc-700 focus:border-red-500 rounded-xl p-4 text-sm text-zinc-300 outline-none custom-scrollbar resize-none transition-colors mb-4"
-                        />
-
-                        {/* 저장 방식 ─ 원본 UI 복원 */}
-                        <select
-                            value={appendTo} onChange={e=>setAppendTo(e.target.value)}
-                            className="w-full bg-zinc-800 border border-zinc-700 text-sm font-bold p-3 rounded-xl outline-none focus:border-red-500 mb-3 text-white"
-                        >
-                            <option value="NEW">✨ 새로운 게임으로 생성 (1화)</option>
-                            {library.map(n=>(
-                                <option key={n.id} value={n.id}>➕ {n.meta.title}에 누적 저장하기 (현재 {n.stages.length}화)</option>
-                            ))}
-                        </select>
-
-                        <button
-                            onClick={handleGenerate}
-                            className="w-full py-3.5 bg-red-700 hover:bg-red-600 active:scale-[0.98] rounded-xl font-black tracking-widest uppercase text-sm flex items-center justify-center gap-2 transition-all shadow-lg"
-                        >
-                            <IcoZap s={18}/> 즉시 게임으로 변환
-                        </button>
-                    </div>
-                </div>
-
-                {/* MY NOVELS */}
-                <h2 className="text-xl font-black mb-6 tracking-widest border-l-4 border-red-600 pl-3">MY NOVELS</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {library.map(n=>(
-                        <div key={n.id} onClick={()=>playNovel(n)}
-                            className="group relative h-64 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden cursor-pointer hover:border-red-600 transition-all shadow-xl">
-                            <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-110"
-                                style={{backgroundImage:`url(${n.meta.coverBg})`,filter:'brightness(0.5)'}}/>
-                            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"/>
-
-                            <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onClick={e=>exportNovel(e,n)} className="p-2 bg-black/60 hover:bg-white hover:text-black text-white rounded-full shadow-lg transition-colors"><IcoDl s={14}/></button>
-                                <button onClick={e=>deleteNovel(e,n.id)} className="p-2 bg-black/60 hover:bg-red-600 text-white rounded-full shadow-lg transition-colors"><IcoTrash s={14}/></button>
-                            </div>
-
-                            <div className="absolute bottom-0 left-0 p-5 w-full">
-                                <div className="flex gap-2 mb-2">
-                                    <span className="bg-red-700 text-white px-2 py-0.5 font-black text-[9px] uppercase tracking-widest rounded-sm">총 {n.stages.length}화</span>
-                                    <span className="bg-zinc-700 text-zinc-300 px-2 py-0.5 font-black text-[9px] uppercase tracking-widest rounded-sm">{n._branchCount||0}개 분기</span>
-                                </div>
-                                <h3 className="text-2xl font-black leading-tight mb-1">{n.meta.title}</h3>
-                                <p className="text-xs text-zinc-400 line-clamp-1">{n.meta.description}</p>
-                            </div>
-                        </div>
-                    ))}
-                    {library.length===0&&(
-                        <div className="col-span-full py-24 text-center text-zinc-600 font-bold border-2 border-dashed border-zinc-800 rounded-2xl">
-                            생성된 게임이 없습니다
-                        </div>
-                    )}
+                <h2 className="text-xl font-bold mb-4">CG 갤러리 ({gallery.length})</h2>
+                <div className="grid grid-cols-3 gap-2 mb-10">
+                    {gallery.map(cg => <img key={cg.id} src={cg.url} className="aspect-square object-cover rounded-lg border border-zinc-800"/>)}
+                    {gallery.length === 0 && <div className="col-span-3 py-10 text-center text-zinc-700 border-2 border-dashed border-zinc-900 rounded-xl">해금된 CG가 없습니다.</div>}
                 </div>
             </div>
         </div>
     );
 
-    /* ══ PLAY 화면 ══ */
-    if(screen==='PLAY'&&sceneData){
-        const currentLine = sceneData.lines[lineIdx];
-        const isBranch = sceneId?.includes('_a')||sceneId?.includes('_b');
+    if (screen === 'PLAY') {
+        const scene = novel.scenes[stageId][sceneId];
+        const line = scene.lines[lineIdx];
+        const isAtEnd = !typing && lineIdx === scene.lines.length - 1;
 
         return (
-            <div className="fixed inset-0 bg-black text-white overflow-hidden select-none">
-
-                {/* 배경 */}
-                <div className="absolute inset-0 z-0">
-                    <div className="absolute inset-0 bg-cover bg-center transition-all duration-1000"
-                        style={{backgroundImage:`url(${sceneData.bg})`,filter:'brightness(0.35)'}}/>
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60"/>
+            <div className="fixed inset-0 bg-black text-white overflow-hidden">
+                <div className="absolute inset-0 bg-cover bg-center transition-all duration-1000" style={{backgroundImage:`url(${scene.bg})`, filter:'brightness(0.4)'}}/>
+                
+                {/* 캐릭터 이미지 */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                    <img key={sceneId} src={getTurboUrl(sceneId, 42)} className="h-[80%] object-contain mt-20 transition-opacity duration-1000" style={{opacity: typing || !isAtEnd ? 0.9 : 0.8}} />
                 </div>
-
-                {/* 캐릭터: 전체화면 */}
-                {sceneData.character && <CharImage key={sceneId} src={sceneData.character.charImage}/>}
 
                 {/* 상단 HUD */}
-                <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-4 pt-4">
-                    <button onClick={()=>setScreen('LIBRARY')}
-                        className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full border border-zinc-700/50 transition-colors">
-                        <IcoBack s={12}/> 나가기
-                    </button>
-                    <div className="flex items-center gap-2">
-                        {isBranch&&<span className="text-[9px] font-black uppercase tracking-widest text-white bg-violet-700 px-2 py-1 rounded-full">BRANCH</span>}
-                        <div className="text-[10px] font-black text-zinc-400 bg-black/50 backdrop-blur-sm px-3 py-1.5 rounded-full border border-zinc-700/50">
-                            {novel?.meta?.title}
-                        </div>
+                <div className="absolute top-4 left-4 right-4 z-50 flex justify-between">
+                    <button onClick={() => setScreen('LIBRARY')} className="bg-black/50 px-4 py-2 rounded-full text-xs font-bold border border-white/10">EXIT</button>
+                    <div className="flex gap-2">
+                        {Object.entries(gameState.stats).map(([k,v]) => <span key={k} className="bg-white/10 px-3 py-1 rounded-full text-[10px] font-black uppercase">{k[0]} {v}</span>)}
                     </div>
                 </div>
 
-                {/* 선택지 ─ 대화창 바로 위 */}
-                {showChoices&&(
-                    <div className="absolute left-0 right-0 z-50 animate-fade-in-up px-3 md:px-8"
-                         style={{bottom:'calc(110px + 36px + 14px + 16px + 16px)'}}>
-                        <div style={{fontSize:'10px',fontWeight:900,letterSpacing:'0.12em',color:'#71717a',marginBottom:'8px',textTransform:'uppercase'}}>
-                            어떻게 하시겠습니까?
-                        </div>
-                        {sceneData.choices.map((c,i)=>(
-                            <button key={i} onClick={()=>pickChoice(c)} className="choice-btn">
-                                <span>{c.text}</span>
-                                <IcoChevron s={16} c="text-red-500 shrink-0 ml-2"/>
-                            </button>
-                        ))}
+                {/* 선택지 영역 */}
+                {isAtEnd && scene.choices && (
+                    <div className="absolute inset-x-0 bottom-48 px-6 z-50 animate-fade-in-up">
+                        {scene.choices.map((c, i) => {
+                            const isLocked = c.requireStat && (gameState.stats[c.requireStat] || 0) < c.requireMin;
+                            return (
+                                <button key={i} disabled={isLocked} onClick={() => pickChoice(c)} className="choice-btn">
+                                    <span>{isLocked ? "🔒 (조건 부족)" : c.text}</span>
+                                    {!isLocked && <IcoChevron/>}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
 
-                {/* 엔딩 버튼 */}
-                {showEnd&&(
-                    <div className="absolute left-0 right-0 z-50 animate-fade-in-up px-3 md:px-8"
-                         style={{bottom:'calc(110px + 36px + 14px + 16px + 16px)'}}>
-                        <button onClick={()=>playNovel(novel)} className="choice-btn" style={{background:'rgba(185,28,28,0.9)',borderColor:'#dc2626',marginBottom:'8px'}}>
-                            처음부터 다시 <IcoChevron s={16} c="shrink-0 ml-2"/>
-                        </button>
-                        <button onClick={()=>setScreen('LIBRARY')} className="choice-btn">
-                            라이브러리로 <IcoChevron s={16} c="text-red-500 shrink-0 ml-2"/>
-                        </button>
-                    </div>
-                )}
-
-                {/* ══ 대화창: 완전 고정 높이 ══ */}
-                <div className="dialog-outer">
+                {/* 대화창 */}
+                <div className="dialog-outer" onClick={advance}>
                     <div className="dialog-inner">
-
-                        {/* 화자 태그 */}
-                        <div className="speaker-badge">{currentLine?.speaker||'서술'}</div>
-
-                        {/* 텍스트: height 고정 → 절대 늘어나지 않음 */}
-                        <div ref={textRef} onClick={advance} className="dialog-text custom-scrollbar">
-                            <p style={{
-                                fontSize:'16px', lineHeight:'1.85',
-                                color:'#f4f4f5', fontWeight:500,
-                                wordBreak:'keep-all', margin:0,
-                            }}>
-                                {displayed}
-                                {typing&&<span className="cursor-blink" style={{color:'#dc2626'}}>█</span>}
-                            </p>
+                        <div className="speaker-badge">{line.speaker}</div>
+                        <div className="dialog-text custom-scrollbar">
+                            <p className="text-[17px] leading-[1.8] font-medium">{displayed}</p>
                         </div>
-
-                        {/* 힌트 바 */}
-                        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'2px 18px 10px'}}>
-                            <span style={{fontSize:'9px',color:'#52525b',fontWeight:700,letterSpacing:'0.1em'}}>
-                                {lineIdx+1} / {sceneData.lines.length}
-                            </span>
-                            {!typing&&!showChoices&&!showEnd&&(
-                                <span style={{fontSize:'10px',color:'#71717a',display:'flex',alignItems:'center',gap:'3px'}}>
-                                    탭하여 계속
-                                    <span className="bounce-anim" style={{display:'inline-flex'}}>
-                                        <IcoChevron s={12} c="text-red-600"/>
-                                    </span>
-                                </span>
-                            )}
+                        <div className="px-5 pb-3 flex justify-between items-center opacity-40 text-[10px] font-bold">
+                            <span>{lineIdx + 1} / {scene.lines.length}</span>
+                            {!typing && !scene.choices && <span>TAP TO NEXT</span>}
                         </div>
                     </div>
                 </div>
+
+                {/* 엔딩 리셋 버튼 */}
+                {isAtEnd && scene.endStage && (
+                    <div className="absolute inset-0 bg-black/80 z-[60] flex flex-col items-center justify-center p-10 text-center animate-fade-in-up">
+                        <h2 className="text-4xl font-black mb-2 text-red-600">STORY END</h2>
+                        <p className="text-zinc-400 mb-8">당신의 선택이 만든 결말에 도달했습니다.</p>
+                        <button onClick={() => setScreen('LIBRARY')} className="bg-white text-black px-10 py-4 rounded-full font-black">라이브러리로 돌아가기</button>
+                    </div>
+                )}
             </div>
         );
     }
 
-    return <div className="fixed inset-0 bg-black flex items-center justify-center text-zinc-600">로딩 중...</div>;
+    return null;
 };
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App />);
