@@ -16,7 +16,6 @@
         @keyframes blink    { 0%,100%{opacity:1} 50%{opacity:0} }
         @keyframes shimmer  { 0%{background-position:-200% center} 100%{background-position:200% center} }
         @keyframes bounce   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
-        @keyframes pulse    { 0%,100%{opacity:0.4;transform:scale(1)} 50%{opacity:0.8;transform:scale(1.05)} }
 
         * { box-sizing:border-box; }
         body {
@@ -221,7 +220,7 @@ function parseNovel(rawText, title="") {
     segs.forEach((seg, i) => {
         const isLast = i===segs.length-1;
         const nextMain = isLast ? null : mkId(i+1,'');
-        const cb = getContextualChoice(seg, i);  // 맥락 기반 선택지
+        const cb = CHOICE_BANKS[i % CHOICE_BANKS.length];
 
         if (!isLast) {
             // 메인 씬
@@ -281,159 +280,45 @@ function parseNovel(rawText, title="") {
 }
 
 /* ══════════════════════════════════════
-   맥락 기반 선택지 시스템
-   텍스트 키워드 분석 → 상황에 맞는 선택지 자동 선택
+   캐릭터 이미지 (로딩 실루엣 → 페이드인)
 ══════════════════════════════════════ */
-
-// 컨텍스트별 키워드
-const CONTEXT_KEYWORDS = {
-    romance:  ['좋아','사랑','설레','두근','마음','고백','키스','손잡','눈빛','보고싶','그리워','특별','예쁘','잘생','반해'],
-    conflict: ['화가','싫어','왜','배신','거짓말','못믿','그만해','멈춰','네 탓','때문에','화났','짜증','억울','불공'],
-    sad:      ['울고','슬프','힘들','눈물','아프','외로','괜찮아','미안','후회','그립','쓸쓸','고독','상처','아쉬'],
-    intimate: ['가까이','안아','느껴','부드럽','따뜻','향기','떨려','단둘이','조용히','숨소리','심장','뜨거','포근'],
-    suspense: ['비밀','숨기','이상해','수상','뭔가','위험','조심','느낌','모르겠','왜그래','혹시','정말로','진짜'],
-    excited:  ['드디어','결국','역시','대박','믿어지지','설마','완전','진심으로','해냈','성공','이겼'],
-};
-
-// 컨텍스트별 선택지 (이모지 + 감성적 텍스트)
-const CONTEXT_CHOICES = {
-    romance: [
-        [{text:"💕 솔직하게 마음을 전한다", mood:"honest"},  {text:"😶 아무 말도 못 한다", mood:"cautious"}],
-        [{text:"🤝 손을 먼저 내민다",        mood:"close"},   {text:"👀 그냥 바라본다",      mood:"distant"}],
-        [{text:"💬 고백한다",                 mood:"bold"},    {text:"🙈 마음을 숨긴다",      mood:"retreat"}],
-    ],
-    conflict: [
-        [{text:"💢 정면으로 맞선다",    mood:"bold"},     {text:"🚶 자리를 피한다",   mood:"retreat"}],
-        [{text:"🗣️ 진실을 말한다",      mood:"honest"},   {text:"🤐 침묵한다",        mood:"calm"}],
-        [{text:"😤 반박한다",            mood:"disagree"}, {text:"😮‍💨 일단 참는다",    mood:"cautious"}],
-    ],
-    sad: [
-        [{text:"🤗 옆에 있어준다",      mood:"help"},      {text:"🚪 혼자 있게 해준다", mood:"distant"}],
-        [{text:"💬 마음을 털어놓는다",  mood:"emotional"}, {text:"😶 아무 말도 않는다", mood:"calm"}],
-        [{text:"🫂 안아준다",           mood:"close"},     {text:"💧 같이 눈물을 흘린다", mood:"emotional"}],
-    ],
-    intimate: [
-        [{text:"💕 더 가까이 다가간다", mood:"close"},   {text:"💭 지금 이 순간을 느낀다", mood:"calm"}],
-        [{text:"🫦 먼저 말을 건넨다",   mood:"bold"},    {text:"🌸 조용히 있는다",          mood:"cautious"}],
-        [{text:"👐 손을 잡는다",        mood:"close"},   {text:"👁️ 눈을 맞춘다",            mood:"direct"}],
-    ],
-    suspense: [
-        [{text:"🔍 직접 확인하러 간다",  mood:"direct"},  {text:"👀 몰래 지켜본다",    mood:"cautious"}],
-        [{text:"❓ 바로 물어본다",        mood:"direct"},  {text:"🤔 혼자 생각해본다", mood:"introspective"}],
-        [{text:"⚡ 먼저 행동한다",        mood:"bold"},    {text:"🛡️ 신중하게 접근한다", mood:"cautious"}],
-    ],
-    excited: [
-        [{text:"🎉 같이 흥분한다",      mood:"bold"},     {text:"😎 침착함을 유지한다", mood:"calm"}],
-        [{text:"🔥 더 몰아붙인다",      mood:"bold"},     {text:"⏸️ 잠깐 멈춘다",       mood:"cautious"}],
-        [{text:"😱 솔직한 반응을 보인다", mood:"emotional"}, {text:"🙂 평정심을 보인다", mood:"calm"}],
-    ],
-    default: [
-        [{text:"⚡ 적극적으로 행동한다", mood:"bold"},    {text:"🤔 신중하게 지켜본다", mood:"cautious"}],
-        [{text:"💬 솔직하게 말한다",     mood:"honest"},  {text:"🤐 적당히 둘러댄다",   mood:"evasive"}],
-        [{text:"🤝 도움을 청한다",       mood:"help"},    {text:"💪 스스로 해결한다",   mood:"solo"}],
-        [{text:"❤️ 믿어보기로 한다",     mood:"trust"},   {text:"↩️ 한 발 물러선다",   mood:"retreat"}],
-    ],
-};
-
-function detectContext(lines) {
-    const text = lines.map(l => l.text).join(' ');
-    let best = 'default', bestScore = 0;
-    for (const [ctx, words] of Object.entries(CONTEXT_KEYWORDS)) {
-        const score = words.filter(w => text.includes(w)).length;
-        if (score > bestScore) { bestScore = score; best = ctx; }
-    }
-    return best;
-}
-
-function getContextualChoice(lines, segIndex) {
-    const ctx   = detectContext(lines);
-    const bank  = CONTEXT_CHOICES[ctx] || CONTEXT_CHOICES.default;
-    return bank[segIndex % bank.length];
-}
-
-/* ══════════════════════════════════════
-   캐릭터 이미지
-   SVG 제거 → 글로우 펄스 로딩 + 실제 이미지 fade-in
-══════════════════════════════════════ */
-
-const CHAR_THEMES = {
-    main: { glow:'rgba(232,121,249,0.6)', glow2:'rgba(167,139,250,0.3)' },
-    a:    { glow:'rgba(251,146,60,0.6)',  glow2:'rgba(239,68,68,0.3)' },
-    b:    { glow:'rgba(56,189,248,0.6)',  glow2:'rgba(99,102,241,0.3)' },
-};
-
-const TURBO_PROMPTS = {
-    main: ['kawaii anime girl smiling', 'cute anime girl pink hair', 'pretty anime schoolgirl'],
-    a:    ['energetic anime girl red hair', 'bold anime girl action', 'confident anime girl orange'],
-    b:    ['calm anime girl blue hair',    'gentle shy anime girl',   'quiet anime girl silver'],
-};
-
-function getTurboUrl(sceneId) {
-    const type = sceneId?.endsWith('_a') ? 'a' : sceneId?.endsWith('_b') ? 'b' : 'main';
-    const num  = parseInt((sceneId?.match(/scene_(\d+)/)||[,0])[1]);
-    const seed = num * 17 + (type==='a' ? 100 : type==='b' ? 200 : 0);
-    const list = TURBO_PROMPTS[type];
-    const p    = list[seed % list.length];
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(p)}?model=turbo&width=420&height=680&nologo=true&seed=${seed}`;
-}
-
-const CharImage = ({ sceneId }) => {
-    const [realLoaded, setRealLoaded] = useState(false);
-    const [realError,  setRealError]  = useState(false);
-    const type = sceneId?.endsWith('_a') ? 'a' : sceneId?.endsWith('_b') ? 'b' : 'main';
-    const t    = CHAR_THEMES[type];
-
-    useEffect(() => { setRealLoaded(false); setRealError(false); }, [sceneId]);
+const CharImage = ({ src }) => {
+    const [loaded, setLoaded] = useState(false);
+    const [err,    setErr]    = useState(false);
+    useEffect(()=>{ setLoaded(false); setErr(false); }, [src]);
 
     return (
-        <div style={{position:'absolute', inset:0, zIndex:10, pointerEvents:'none'}}>
-
-            {/* 로딩 중: 글로우 펄스 */}
-            {!realLoaded && (
+        <div style={{position:'absolute',inset:0,zIndex:10,pointerEvents:'none'}}>
+            {/* 로딩 중 실루엣 */}
+            {!loaded && !err && (
                 <div style={{
-                    position:'absolute', inset:0,
-                    display:'flex', alignItems:'center', justifyContent:'center',
-                }}>
-                    <div style={{
-                        width:'200px', height:'400px',
-                        borderRadius:'50% 50% 0 0',
-                        background:`radial-gradient(ellipse at 50% 40%, ${t.glow} 0%, ${t.glow2} 50%, transparent 75%)`,
-                        animation:'pulse 2s ease-in-out infinite',
-                        marginBottom:'160px',
-                    }}/>
-                </div>
+                    position:'absolute', bottom:0, left:'50%', transform:'translateX(-50%)',
+                    width:'60%', height:'80%',
+                    background:'linear-gradient(180deg,rgba(220,38,38,0.06) 0%,rgba(220,38,38,0.02) 70%,transparent 100%)',
+                    borderRadius:'48% 48% 0 0',
+                }}/>
             )}
-
-            {/* 실제 이미지 */}
-            {!realError && (
-                <img src={getTurboUrl(sceneId)} alt=""
-                    onLoad={()=>setRealLoaded(true)}
-                    onError={()=>setRealError(true)}
+            {/* 실제 이미지: 전체화면 꽉 채움 */}
+            {!err && (
+                <img
+                    src={src} alt=""
+                    onLoad={()=>setLoaded(true)}
+                    onError={()=>setErr(true)}
                     style={{
                         position:'absolute', inset:0,
                         width:'100%', height:'100%',
-                        objectFit:'cover', objectPosition:'top center',
-                        opacity: realLoaded ? 0.93 : 0,
-                        transition:'opacity 1.2s ease',
+                        objectFit:'cover',
+                        objectPosition:'top center',
+                        opacity: loaded ? 0.92 : 0,
+                        transition:'opacity 1s ease',
                     }}
                 />
             )}
-
-            {/* 로딩 텍스트 */}
-            {!realLoaded && !realError && (
-                <div style={{
-                    position:'absolute', bottom:'190px', left:'50%',
-                    transform:'translateX(-50%)', whiteSpace:'nowrap',
-                    fontSize:'10px', color:'rgba(255,255,255,0.25)',
-                    fontWeight:700, letterSpacing:'0.12em',
-                }}>✦ 이미지 생성 중...</div>
-            )}
-
-            {/* 하단 그라디언트 */}
+            {/* 하단 그라디언트 - 대화창과 자연 연결 */}
             <div style={{
-                position:'absolute', bottom:0, left:0, right:0, height:'45%',
-                background:'linear-gradient(to top,#000 0%,rgba(0,0,0,0.5) 45%,transparent 100%)',
-                zIndex:2,
+                position:'absolute', bottom:0, left:0, right:0, height:'50%',
+                background:'linear-gradient(to top, #000 0%, rgba(0,0,0,0.55) 50%, transparent 100%)',
+                zIndex:1,
             }}/>
         </div>
     );
@@ -671,10 +556,8 @@ const App = () => {
                     <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black/60"/>
                 </div>
 
-            {/* 캐릭터: 전체화면 */}
-            {sceneData.character && (
-                <CharImage key={sceneId} sceneId={sceneId}/>
-            )}
+                {/* 캐릭터: 전체화면 */}
+                {sceneData.character && <CharImage key={sceneId} src={sceneData.character.charImage}/>}
 
                 {/* 상단 HUD */}
                 <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-4 pt-4">
