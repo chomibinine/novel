@@ -3,16 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Visual Novel Engine - Ultimate</title>
+    <title>Visual Novel Engine - Director's Cut</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
     <style>
         @keyframes fadeInUp { from{opacity:0;transform:translateY(20px)} to{opacity:1;transform:translateY(0)} }
         @keyframes blink    { 0%,100%{opacity:1} 50%{opacity:0} }
-        body { margin:0; background:#000; font-family:'Pretendard', -apple-system, sans-serif; overscroll-behavior:none; -webkit-user-select:none; user-select:none; }
+        body { margin:0; background:#000; font-family:'Pretendard', -apple-system, sans-serif; overscroll-behavior:none; -webkit-user-select:none; user-select:none; overflow: hidden; }
         .animate-fade-in-up { animation:fadeInUp 0.5s ease-out forwards; }
         .cursor-blink { animation:blink 0.8s step-end infinite; }
         .custom-scrollbar::-webkit-scrollbar { width:4px; }
@@ -40,38 +39,70 @@ const { useState, useEffect, useRef } = React;
 const IcoChevron = () => <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>;
 const IcoZap = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>;
 
-/* ── 이미지 엔진 설정 ── */
-const BG_POOL = ["anime visual novel background mystery street night", "anime visual novel background dark room lamp", "anime visual novel background sunset bridge", "anime visual novel background train interior"];
-const getTurboUrl = (sceneId, seed) => {
-    const type = sceneId?.endsWith('_a') ? 'a' : sceneId?.endsWith('_b') ? 'b' : 'main';
-    const prompts = { main: 'anime girl smiling gentle', a: 'anime girl confident bold expression', b: 'anime girl shy looking away' };
-    return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompts[type])}?model=turbo&width=300&height=480&nologo=true&seed=${seed}`;
+/* ══════════════════════════════════════
+   🔥 디렉터 컷 핵심: 캐릭터 & 감정 시스템
+══════════════════════════════════════ */
+const CHARACTERS = {
+    chomi: { base: "anime high school girl, long hair, school uniform, no glasses", seed: 777 },
+    bini: { base: "anime middle school boy, short hair, casual outfit", seed: 888 },
+    mc: { base: "anime young man, dark hair, casual coat", seed: 999 }
 };
 
-/* ── 🔥 핵심 트릭: 타임아웃 프리로더 (최대 800ms 대기) ── */
+const EMOTIONS = {
+    neutral: "calm expression, looking forward",
+    happy: "smiling brightly, cheerful",
+    sad: "teary eyes, sad expression",
+    angry: "angry, frowning",
+    shy: "blushing, looking away",
+    bold: "confident smirk, energetic"
+};
+
+const SPEAKER_MAP = {
+    "초미": "chomi",
+    "비니": "bini",
+    "주인공": "mc"
+};
+
+const getCharacterUrl = (charId, emotion = "neutral") => {
+    if (emotion === "exit") return null;
+    const char = CHARACTERS[charId] || CHARACTERS.chomi;
+    const emo = EMOTIONS[emotion] || EMOTIONS.neutral;
+    // 시드 고정으로 얼굴 일관성 유지
+    return `https://image.pollinations.ai/prompt/${encodeURIComponent(char.base + ", " + emo)}?model=turbo&width=300&height=480&seed=${char.seed}&nologo=true`;
+};
+
+const BG_POOL = ["anime street sunny day", "anime park sunset", "anime room night"];
+
 const preloadImage = (src, timeout = 800) => {
+    if (!src) return Promise.resolve();
     return new Promise(res => {
         const img = new Image();
         let done = false;
         const finish = () => { if (!done) { done = true; res(); } };
-        img.onload = finish;
-        img.onerror = finish; // 실패해도 넘겨서 게임 멈춤 방지
-        img.src = src;
-        setTimeout(finish, timeout); // 800ms 지나면 로드 덜 됐어도 강제 진행
+        img.onload = finish; img.onerror = finish; img.src = src;
+        setTimeout(finish, timeout);
     });
 };
 
 /* ══════════════════════════════════════
-   파서: 루트 분기점 및 데이터 구조화
+   🔥 파서: 화자|감정|위치 추출 로직
 ══════════════════════════════════════ */
 function parseNovel(rawText, title="") {
     const lines = rawText.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
     const dlines = lines.map(line => {
-        const m = line.match(/^([^:：]{1,12})[：:]\s*(.+)$/);
-        return m ? { speaker:m[1].trim(), text:m[2].trim() } : { speaker:"서술", text:line };
+        const m = line.match(/^([^|:：]{1,12})(?:\|([^|:：]+))?(?:\|([^:：]+))?[：:]\s*(.+)$/);
+        if (m) {
+            return {
+                speaker: m[1].trim(),
+                emotion: (m[2] || "neutral").trim(),
+                position: (m[3] || "left").trim(), // 기본 배치 좌측
+                text: m[4].trim()
+            };
+        }
+        return { speaker: "서술", emotion: "neutral", position: "center", text: line };
     });
 
-    const LPS = 4; // 한 씬당 대사 수
+    const LPS = 4; 
     const segs = [];
     for (let i=0; i<dlines.length; i+=LPS) segs.push(dlines.slice(i, i+LPS));
 
@@ -87,109 +118,102 @@ function parseNovel(rawText, title="") {
             lines: seg,
             isRouteSplit,
             choices: i < segs.length - 1 && !isRouteSplit ? [
-                { text: "🤝 믿음을 보여준다", next: `${id}_a`, mood: "trust" },
-                { text: "⚡ 단호하게 행동한다", next: `${id}_b`, mood: "bold" },
-                { text: "🔒 모든 걸 맡긴다", next: `${id}_a`, mood: "trust", requireStat: "trust", requireMin: 2 }
+                { text: "🤝 믿고 기다려준다", next: `${id}_a`, mood: "trust" },
+                { text: "⚡ 내가 나선다", next: `${id}_b`, mood: "bold" },
             ] : null
         };
-        scenes[`${id}_a`] = { lines: [{speaker:"서술", text:"당신의 신뢰가 공기를 부드럽게 만들었다."}], nextScene: `scene_${i+1}`, bg: scenes[id].bg };
-        scenes[`${id}_b`] = { lines: [{speaker:"서술", text:"당신의 결단력이 상황을 급변시켰다."}], nextScene: `scene_${i+1}`, bg: scenes[id].bg };
+        scenes[`${id}_a`] = { lines: [{speaker:"서술", text:"당신의 신뢰가 공기를 부드럽게 만들었다.", position:"center"}], nextScene: `scene_${i+1}`, bg: scenes[id].bg };
+        scenes[`${id}_b`] = { lines: [{speaker:"서술", text:"당신의 결단력이 상황을 급변시켰다.", position:"center"}], nextScene: `scene_${i+1}`, bg: scenes[id].bg };
     });
 
-    // 루트 엔딩 씬 생성
     const routes = ["trust", "bold", "neutral"];
     routes.forEach(r => {
         scenes[`route_${r}_end`] = {
             bg: `https://image.pollinations.ai/prompt/anime%20visual%20novel%20ending%20${r}?width=1280&height=720&nologo=true`,
-            lines: [{ speaker: "서술", text: `당신이 걸어온 길은 ${r}의 결말로 이어졌습니다.` }, { speaker: "서술", text: "— FIN —" }],
-            endStage: true,
-            cg: { id: `cg_${r}`, url: `https://image.pollinations.ai/prompt/anime%20girl%20special%20${r}?width=1024&height=1024&nologo=true` }
+            lines: [{ speaker: "서술", text: `이야기는 ${r}의 결말로 이어졌습니다.`, position:"center" }],
+            endStage: true
         };
     });
 
-    return { id: 'novel_'+ts, meta: { title: title || "새로운 이야기" }, stages: [{id:'st_1', firstScene:'scene_0'}], scenes: { 'st_1': scenes } };
+    return { id: 'novel_'+ts, meta: { title: title || "초미 & 비니 스토리" }, stages: [{id:'st_1', firstScene:'scene_0'}], scenes: { 'st_1': scenes } };
 }
 
 /* ══════════════════════════════════════
-   메인 컴포넌트
+   메인 컴포넌트 (디렉터 엔진)
 ══════════════════════════════════════ */
 const App = () => {
     const [screen, setScreen] = useState('LIBRARY');
     const [library, setLibrary] = useState([]);
     const [novel, setNovel] = useState(null);
-    const [rawText, setRawText] = useState("");
     
-    // 게임 엔진 코어 상태
+    const DEFAULT_SCRIPT = `초미|happy|left: 비니야, 오늘 날씨 진짜 좋다!
+비니|neutral|right: 그러게. 근데 누나, 안경은 어쨌어?
+초미|bold|left: 오늘은 안경 안 쓰는 날이야!
+비니|exit|right: (비니가 황급히 도망친다)
+초미|sad|left: ...어디 가?`;
+    
+    const [rawText, setRawText] = useState(DEFAULT_SCRIPT);
+    
     const [stageId, setStageId] = useState(null);
     const [sceneId, setSceneId] = useState(null);
     const [lineIdx, setLineIdx] = useState(0);
     const [gameState, setGameState] = useState({ choices: [], stats: {} });
-    const [gallery, setGallery] = useState([]);
     
-    // UI 및 타이핑 상태
     const [displayed, setDisplayed] = useState("");
     const [typing, setTyping] = useState(false);
     
-    // 🔥 UX 트릭 핵심: 시각 에셋 분리 상태 관리
-    const [visuals, setVisuals] = useState({ bg: '', char: '', charVisible: false });
+    // 🔥 좌우 캐릭터 독립 관리
+    const [visuals, setVisuals] = useState({ bg: '', left: null, right: null, charVisible: false });
     const [isTransitioning, setIsTransitioning] = useState(false);
 
     const timerRef = useRef(null);
 
-    // 로컬 스토리지 데이터 로드/저장
     useEffect(() => {
         const lib = localStorage.getItem('vn_lib'); if (lib) setLibrary(JSON.parse(lib));
-        const gal = localStorage.getItem('vn_gal'); if (gal) setGallery(JSON.parse(gal));
     }, []);
     useEffect(() => { localStorage.setItem('vn_lib', JSON.stringify(library)); }, [library]);
-    useEffect(() => { localStorage.setItem('vn_gal', JSON.stringify(gallery)); }, [gallery]);
-
-    const saveGame = () => {
-        const data = { novelId: novel.id, stageId, sceneId, lineIdx, gameState, visuals, time: Date.now() };
-        localStorage.setItem("vn_save_data", JSON.stringify(data));
-    };
-
-    const loadGame = () => {
-        const raw = localStorage.getItem("vn_save_data");
-        if (!raw) return alert("저장된 데이터가 없습니다.");
-        const d = JSON.parse(raw);
-        const target = library.find(x => x.id === d.novelId);
-        if (!target) return alert("해당 원본 소설을 찾을 수 없습니다.");
-        setNovel(target); setStageId(d.stageId); setSceneId(d.sceneId); setLineIdx(d.lineIdx); setGameState(d.gameState); setVisuals(d.visuals);
-        setScreen("PLAY");
-    };
 
     const getRoute = (state) => {
         const s = state.stats;
-        if ((s.trust || 0) >= 2) return "trust";
-        if ((s.bold || 0) >= 2) return "bold";
+        if ((s.trust || 0) >= 1) return "trust";
+        if ((s.bold || 0) >= 1) return "bold";
         return "neutral";
     };
 
-    /* ── 🔥 핵심 로직: 영리한 씬 전환 (Background Instant, Character Fade) ── */
+    /* ── 씬 이동 및 캐릭터 자동 로딩 ── */
     const goToScene = async (nextId, forcedNovel = null, forcedStage = null) => {
         setIsTransitioning(true);
-        
         const targetNovel = forcedNovel || novel;
         const targetStage = forcedStage || stageId;
         const nextScene = targetNovel.scenes[targetStage][nextId];
         
-        const nextCharSrc = getTurboUrl(nextId, 42);
-        const nextBgSrc = nextScene.bg;
+        const firstLine = nextScene.lines[0];
+        let nextLeft = visuals.left;
+        let nextRight = visuals.right;
 
-        // 트릭 1: 이전 배경을 유지하다가 새 배경으로 즉시 교체. 캐릭터는 페이드 아웃(charVisible: false)
-        setVisuals(v => ({ ...v, bg: nextBgSrc, charVisible: false }));
+        // 첫 대사가 캐릭터인 경우 갱신
+        if (firstLine && firstLine.speaker !== "서술") {
+            const charId = SPEAKER_MAP[firstLine.speaker];
+            if (charId) {
+                const url = getCharacterUrl(charId, firstLine.emotion);
+                if (firstLine.position === "right") nextRight = url;
+                else nextLeft = url;
+            }
+        }
 
-        // 트릭 2: 캐릭터 페이드 아웃 & 로딩 시간을 벌기 위해 최대 800ms만 대기
-        await preloadImage(nextCharSrc, 800);
+        setVisuals(v => ({ ...v, bg: nextScene.bg, charVisible: false }));
+        
+        // 변경된 캐릭터만 프리로드
+        const preloads = [];
+        if (nextLeft && nextLeft !== visuals.left) preloads.push(preloadImage(nextLeft, 800));
+        if (nextRight && nextRight !== visuals.right) preloads.push(preloadImage(nextRight, 800));
+        await Promise.all(preloads);
 
-        // 씬 데이터 교체 (로직 진행)
         if(forcedNovel) { setNovel(forcedNovel); setStageId(targetStage); }
         setSceneId(nextId);
         setLineIdx(0);
         
-        // 트릭 3: 씬 진입과 동시에 준비된 캐릭터 페이드 인
-        setVisuals({ bg: nextBgSrc, char: nextCharSrc, charVisible: true });
+        setVisuals({ bg: nextScene.bg, left: nextLeft, right: nextRight, charVisible: true });
         setIsTransitioning(false);
     };
 
@@ -199,19 +223,10 @@ const App = () => {
         await goToScene('scene_0', n, 'st_1');
     };
 
-    /* ── CG 해금 및 자동 저장 (씬 진입 시) ── */
-    useEffect(() => {
-        if (!novel || !sceneId || screen !== 'PLAY') return;
-        const scene = novel.scenes[stageId][sceneId];
-        if (scene.cg) setGallery(prev => prev.find(x => x.id === scene.cg.id) ? prev : [...prev, scene.cg]);
-        saveGame();
-    }, [sceneId]);
-
-    /* ── 🔥 핵심 로직: 연타 방어 및 진행 ── */
+    /* ── 대사 진행 & 캐릭터 갱신 ── */
     const advance = () => {
         const scene = novel.scenes[stageId][sceneId];
         
-        // 트릭 4: 텍스트 타이핑 중 클릭 시, 전환 중이든 아니든 무조건 즉시 완성 (UX 씹힘 방지)
         if (typing) { 
             setDisplayed(scene.lines[lineIdx].text); 
             setTyping(false); 
@@ -219,11 +234,27 @@ const App = () => {
             return; 
         }
         
-        // 텍스트가 다 나온 상태에서 화면 전환 중이라면, 이 때만 클릭 무시
         if (isTransitioning) return;
         
         if (lineIdx < scene.lines.length - 1) {
-            setLineIdx(prev => prev + 1);
+            const nextIdx = lineIdx + 1;
+            const nextLine = scene.lines[nextIdx];
+            
+            // 🔥 라인 넘길 때 화자/감정 변경 실시간 렌더링
+            setVisuals(prev => {
+                const nv = { ...prev };
+                if (nextLine.speaker !== "서술") {
+                    const charId = SPEAKER_MAP[nextLine.speaker];
+                    if (charId) {
+                        const pos = nextLine.position === "right" ? "right" : "left";
+                        if (nextLine.emotion === "exit") nv[pos] = null;
+                        else nv[pos] = getCharacterUrl(charId, nextLine.emotion);
+                    }
+                }
+                return nv;
+            });
+            
+            setLineIdx(nextIdx);
         } else if (scene.isRouteSplit) {
             goToScene(`route_${getRoute(gameState)}_end`);
         } else if (scene.nextScene) {
@@ -232,7 +263,7 @@ const App = () => {
     };
 
     const pickChoice = (c) => {
-        if (isTransitioning) return; // 버튼 연타 방지
+        if (isTransitioning) return;
         setGameState(prev => ({
             choices: [...prev.choices, c.mood],
             stats: { ...prev.stats, [c.mood]: (prev.stats[c.mood] || 0) + 1 }
@@ -240,7 +271,6 @@ const App = () => {
         goToScene(c.next);
     };
 
-    /* ── 대사 타이핑 효과 ── */
     useEffect(() => {
         if (screen !== 'PLAY' || !novel || !sceneId || isTransitioning) return;
         const line = novel.scenes[stageId][sceneId].lines[lineIdx];
@@ -249,52 +279,32 @@ const App = () => {
         timerRef.current = setInterval(() => {
             if (i < line.text.length) setDisplayed(line.text.substring(0, ++i));
             else { setTyping(false); clearInterval(timerRef.current); }
-        }, 30);
+        }, 35);
         return () => clearInterval(timerRef.current);
     }, [sceneId, lineIdx, screen, isTransitioning]);
 
     /* ══════════════════════════════════════
-       렌더링 (LIBRARY / PLAY)
+       렌더링
     ══════════════════════════════════════ */
     if (screen === 'LIBRARY') return (
         <div className="fixed inset-0 bg-zinc-950 text-white overflow-y-auto p-6 custom-scrollbar">
-            <div className="max-w-3xl mx-auto">
-                <h1 className="text-3xl font-black mb-8 text-shimmer tracking-widest">VN ENGINE ULTIMATE</h1>
+            <div className="max-w-3xl mx-auto mt-10">
+                <h1 className="text-3xl font-black mb-8 text-shimmer tracking-widest uppercase">Director's Stage</h1>
                 
                 <div className="bg-zinc-900 p-6 rounded-2xl mb-10 border border-zinc-800 shadow-2xl">
+                    <p className="text-xs text-zinc-400 mb-3 font-bold uppercase">형식: 화자|감정|위치: 대사 (퇴장 = exit)</p>
                     <textarea 
                         value={rawText} onChange={e=>setRawText(e.target.value)}
-                        placeholder="대본을 입력하세요... (화자: 대사)"
-                        className="w-full h-40 bg-black p-4 rounded-xl mb-4 outline-none border border-zinc-700 focus:border-red-500 transition-all text-sm custom-scrollbar"
+                        className="w-full h-56 bg-black p-4 rounded-xl mb-4 outline-none border border-zinc-700 focus:border-red-500 transition-all text-[15px] font-medium custom-scrollbar leading-relaxed"
                     />
                     <button onClick={() => {
-                        if(!rawText.trim()) return alert("텍스트를 입력해주세요!");
+                        if(!rawText.trim()) return;
                         const n = parseNovel(rawText);
                         setLibrary([n, ...library]);
                         startGame(n);
-                    }} className="w-full py-4 bg-red-700 hover:bg-red-600 active:scale-95 transition-all rounded-xl font-bold flex items-center justify-center gap-2 uppercase tracking-widest">
-                        <IcoZap/> 이야기 변환 및 즉시 플레이
+                    }} className="w-full py-4 bg-red-700 hover:bg-red-600 active:scale-95 transition-all rounded-xl font-bold flex items-center justify-center gap-2 tracking-widest shadow-lg shadow-red-900/50">
+                        <IcoZap/> 스테이지 입장
                     </button>
-                    {library.length > 0 && (
-                        <button onClick={loadGame} className="w-full mt-4 py-2 text-zinc-400 hover:text-white transition-colors text-sm font-bold">
-                            최근 세이브 데이터 불러오기
-                        </button>
-                    )}
-                </div>
-
-                <div className="flex justify-between items-end border-b border-zinc-800 pb-2 mb-4">
-                    <h2 className="text-xl font-bold">CG 갤러리</h2>
-                    <span className="text-xs text-zinc-500 font-bold">{gallery.length}장 수집됨</span>
-                </div>
-                <div className="grid grid-cols-3 md:grid-cols-4 gap-3 mb-10">
-                    {gallery.map(cg => (
-                        <img key={cg.id} src={cg.url} className="aspect-square object-cover rounded-lg border border-zinc-800 hover:border-red-500 transition-colors hover:scale-105 cursor-pointer"/>
-                    ))}
-                    {gallery.length === 0 && (
-                        <div className="col-span-full py-16 text-center text-zinc-700 border-2 border-dashed border-zinc-900 rounded-xl font-bold">
-                            아직 해금된 CG가 없습니다. 엔딩을 향해 나아가세요!
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
@@ -304,26 +314,49 @@ const App = () => {
         const scene = novel?.scenes?.[stageId]?.[sceneId];
         const line = scene?.lines?.[lineIdx];
         const isAtEnd = !typing && line && lineIdx === scene.lines.length - 1;
+        
+        // 🔥 현재 말하는 사람 확인 (조명/스케일 연출용)
+        const activePos = line?.position || "center";
+        const isNarration = line?.speaker === "서술" || !line;
 
         return (
             <div className="fixed inset-0 bg-black text-white overflow-hidden">
-                {/* 트릭 4: 배경은 즉각적으로 덮어치거나 부드럽게 크로스페이드 (빈 공백 방지) */}
                 <div className="absolute inset-0 bg-cover bg-center transition-all duration-700" 
-                     style={{backgroundImage:`url(${visuals.bg})`, filter:'brightness(0.4)'}}/>
+                     style={{backgroundImage:`url(${visuals.bg})`, filter:'brightness(0.35)'}}/>
                 
-                {/* 트릭 5: 캐릭터 이미지는 DOM을 유지하고 opacity 상태로만 제어 (깜빡임 완벽 제거) */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                    <img 
-                        src={visuals.char} 
-                        className="h-[80%] object-contain mt-20 transition-all duration-500 ease-out" 
-                        style={{
-                            opacity: visuals.charVisible ? (typing || !isAtEnd ? 0.95 : 0.85) : 0,
-                            transform: visuals.charVisible ? 'scale(1)' : 'scale(0.95)'
-                        }} 
-                    />
+                {/* 🔥 무대 조명 & 캐릭터 렌더링 */}
+                <div className="absolute inset-0 pointer-events-none flex justify-center items-end">
+                    
+                    {/* LEFT Character */}
+                    {visuals.left && (
+                        <img 
+                            src={visuals.left} 
+                            className="absolute left-[2%] bottom-0 h-[85%] md:h-[90%] object-contain transition-all duration-500 ease-out origin-bottom" 
+                            style={{
+                                opacity: visuals.charVisible ? (activePos === "left" || isNarration ? 1 : 0.4) : 0,
+                                transform: visuals.charVisible ? (activePos === "left" ? "scale(1.02)" : "scale(0.95)") : "scale(0.95)",
+                                zIndex: activePos === "left" ? 20 : 10,
+                                filter: activePos === "left" ? "brightness(1.1) drop-shadow(0 0 20px rgba(0,0,0,0.5))" : "brightness(0.6)"
+                            }} 
+                        />
+                    )}
+
+                    {/* RIGHT Character */}
+                    {visuals.right && (
+                        <img 
+                            src={visuals.right} 
+                            className="absolute right-[2%] bottom-0 h-[85%] md:h-[90%] object-contain transition-all duration-500 ease-out origin-bottom" 
+                            style={{
+                                opacity: visuals.charVisible ? (activePos === "right" || isNarration ? 1 : 0.4) : 0,
+                                transform: visuals.charVisible ? `scaleX(-1) ${activePos === "right" ? "scale(1.02)" : "scale(0.95)"}` : "scaleX(-1) scale(0.95)",
+                                zIndex: activePos === "right" ? 20 : 10,
+                                filter: activePos === "right" ? "brightness(1.1) drop-shadow(0 0 20px rgba(0,0,0,0.5))" : "brightness(0.6)"
+                            }} 
+                        />
+                    )}
                 </div>
 
-                {/* 상단 HUD: 전환 중일 땐 UI 전체를 살짝 흐리게 처리 */}
+                {/* 상단 HUD */}
                 <div className="absolute top-4 left-4 right-4 z-50 flex justify-between transition-opacity duration-300" style={{opacity: visuals.charVisible ? 1 : 0}}>
                     <button onClick={() => setScreen('LIBRARY')} className="bg-black/50 px-4 py-2 rounded-full text-xs font-bold border border-white/10 hover:bg-red-700 transition-colors">EXIT</button>
                     <div className="flex gap-2">
@@ -331,47 +364,42 @@ const App = () => {
                     </div>
                 </div>
 
-                {/* 선택지 영역 */}
+                {/* 선택지 */}
                 {isAtEnd && scene?.choices && visuals.charVisible && (
                     <div className="absolute inset-x-0 bottom-48 px-4 md:px-10 z-50 animate-fade-in-up">
-                        {scene.choices.map((c, i) => {
-                            const isLocked = c.requireStat && (gameState.stats[c.requireStat] || 0) < c.requireMin;
-                            return (
-                                <button key={i} disabled={isLocked} onClick={() => pickChoice(c)} className="choice-btn">
-                                    <span>{isLocked ? "🔒 " + c.text.replace(/^[^\s]+\s/, '') : c.text}</span>
-                                    {!isLocked && <IcoChevron/>}
-                                </button>
-                            );
-                        })}
+                        {scene.choices.map((c, i) => (
+                            <button key={i} onClick={() => pickChoice(c)} className="choice-btn">
+                                <span>{c.text}</span><IcoChevron/>
+                            </button>
+                        ))}
                     </div>
                 )}
 
-                {/* 대화창 (화면 터치 진행) */}
+                {/* 대화창 */}
                 {scene && (
                     <div className="dialog-outer transition-opacity duration-300" onClick={advance} style={{opacity: visuals.charVisible ? 1 : 0}}>
-                        <div className="dialog-inner shadow-2xl">
-                            <div className="speaker-badge">{line?.speaker}</div>
-                            <div className="dialog-text custom-scrollbar">
-                                <p className="text-[16px] md:text-[18px] leading-[1.8] font-medium text-zinc-100 word-break-keep">
+                        <div className="dialog-inner shadow-2xl border-t border-white/10">
+                            {line?.speaker !== "서술" && <div className="speaker-badge">{line?.speaker}</div>}
+                            <div className="dialog-text custom-scrollbar" style={{marginTop: line?.speaker==="서술" ? '15px' : '0'}}>
+                                <p className="text-[17px] md:text-[19px] leading-[1.8] font-medium text-zinc-100 word-break-keep" style={{color: line?.speaker==="서술" ? '#a1a1aa' : '#f4f4f5'}}>
                                     {displayed}
                                     {typing && <span className="cursor-blink text-red-500 ml-1">█</span>}
                                 </p>
                             </div>
                             <div className="px-5 pb-3 flex justify-between items-center opacity-40 text-[10px] font-bold">
                                 <span>{lineIdx + 1} / {scene.lines.length}</span>
-                                {!typing && !scene.choices && <span className="flex items-center gap-1 animate-pulse">TAP TO NEXT <IcoChevron/></span>}
+                                {!typing && !scene.choices && <span className="flex items-center gap-1 animate-pulse">TAP TO CONTINUE <IcoChevron/></span>}
                             </div>
                         </div>
                     </div>
                 )}
 
-                {/* 엔딩 오버레이 */}
+                {/* 엔딩 연출 */}
                 {isAtEnd && scene?.endStage && visuals.charVisible && (
-                    <div className="absolute inset-0 bg-black/85 z-[60] flex flex-col items-center justify-center p-10 text-center animate-fade-in-up backdrop-blur-sm">
-                        <h2 className="text-5xl font-black mb-3 text-red-600 tracking-widest text-shadow-lg">STORY END</h2>
-                        <p className="text-zinc-300 mb-10 font-bold text-lg">당신의 선택이 만든 결말에 도달했습니다.</p>
-                        <button onClick={() => setScreen('LIBRARY')} className="bg-white hover:bg-zinc-200 text-black px-12 py-4 rounded-full font-black tracking-widest transition-transform active:scale-95">
-                            라이브러리로 돌아가기
+                    <div className="absolute inset-0 bg-black/90 z-[60] flex flex-col items-center justify-center p-10 text-center animate-fade-in-up backdrop-blur-md">
+                        <h2 className="text-5xl font-black mb-3 text-red-600 tracking-widest text-shadow-lg">CURTAIN CALL</h2>
+                        <button onClick={() => setScreen('LIBRARY')} className="mt-10 bg-white hover:bg-zinc-200 text-black px-12 py-4 rounded-full font-black tracking-widest transition-transform active:scale-95">
+                            스테이지 나가기
                         </button>
                     </div>
                 )}
