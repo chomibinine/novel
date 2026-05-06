@@ -16,6 +16,7 @@
         @keyframes blink    { 0%,100%{opacity:1} 50%{opacity:0} }
         @keyframes shimmer  { 0%{background-position:-200% center} 100%{background-position:200% center} }
         @keyframes bounce   { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+        @keyframes pulse    { 0%,100%{opacity:0.4;transform:scale(1)} 50%{opacity:0.8;transform:scale(1.05)} }
 
         * { box-sizing:border-box; }
         body {
@@ -220,7 +221,7 @@ function parseNovel(rawText, title="") {
     segs.forEach((seg, i) => {
         const isLast = i===segs.length-1;
         const nextMain = isLast ? null : mkId(i+1,'');
-        const cb = CHOICE_BANKS[i % CHOICE_BANKS.length];
+        const cb = getContextualChoice(seg, i);  // 맥락 기반 선택지
 
         if (!isLast) {
             // 메인 씬
@@ -280,19 +281,91 @@ function parseNovel(rawText, title="") {
 }
 
 /* ══════════════════════════════════════
-   캐릭터: SVG 즉시표시 + Pollinations turbo 실제 이미지 fade-in
+   맥락 기반 선택지 시스템
+   텍스트 키워드 분석 → 상황에 맞는 선택지 자동 선택
 ══════════════════════════════════════ */
-const CHAR_THEMES = {
-    main: { h1:'#f472b6', h2:'#a855f7', h3:'#7c3aed', d1:'#9333ea', d2:'#6d28d9', eye:'#c084fc', ribbon:'#f9a8d4', glow:'rgba(232,121,249,0.5)' },
-    a:    { h1:'#fb923c', h2:'#ef4444', h3:'#dc2626', d1:'#ef4444', d2:'#b91c1c', eye:'#fb923c', ribbon:'#fde047', glow:'rgba(251,146,60,0.5)' },
-    b:    { h1:'#60d5fa', h2:'#38bdf8', h3:'#0284c7', d1:'#0ea5e9', d2:'#4f46e5', eye:'#38bdf8', ribbon:'#a5f3fc', glow:'rgba(56,189,248,0.5)' },
+
+// 컨텍스트별 키워드
+const CONTEXT_KEYWORDS = {
+    romance:  ['좋아','사랑','설레','두근','마음','고백','키스','손잡','눈빛','보고싶','그리워','특별','예쁘','잘생','반해'],
+    conflict: ['화가','싫어','왜','배신','거짓말','못믿','그만해','멈춰','네 탓','때문에','화났','짜증','억울','불공'],
+    sad:      ['울고','슬프','힘들','눈물','아프','외로','괜찮아','미안','후회','그립','쓸쓸','고독','상처','아쉬'],
+    intimate: ['가까이','안아','느껴','부드럽','따뜻','향기','떨려','단둘이','조용히','숨소리','심장','뜨거','포근'],
+    suspense: ['비밀','숨기','이상해','수상','뭔가','위험','조심','느낌','모르겠','왜그래','혹시','정말로','진짜'],
+    excited:  ['드디어','결국','역시','대박','믿어지지','설마','완전','진심으로','해냈','성공','이겼'],
 };
 
-// turbo 모드 + 짧은 프롬프트 = 3~5초 생성
+// 컨텍스트별 선택지 (이모지 + 감성적 텍스트)
+const CONTEXT_CHOICES = {
+    romance: [
+        [{text:"💕 솔직하게 마음을 전한다", mood:"honest"},  {text:"😶 아무 말도 못 한다", mood:"cautious"}],
+        [{text:"🤝 손을 먼저 내민다",        mood:"close"},   {text:"👀 그냥 바라본다",      mood:"distant"}],
+        [{text:"💬 고백한다",                 mood:"bold"},    {text:"🙈 마음을 숨긴다",      mood:"retreat"}],
+    ],
+    conflict: [
+        [{text:"💢 정면으로 맞선다",    mood:"bold"},     {text:"🚶 자리를 피한다",   mood:"retreat"}],
+        [{text:"🗣️ 진실을 말한다",      mood:"honest"},   {text:"🤐 침묵한다",        mood:"calm"}],
+        [{text:"😤 반박한다",            mood:"disagree"}, {text:"😮‍💨 일단 참는다",    mood:"cautious"}],
+    ],
+    sad: [
+        [{text:"🤗 옆에 있어준다",      mood:"help"},      {text:"🚪 혼자 있게 해준다", mood:"distant"}],
+        [{text:"💬 마음을 털어놓는다",  mood:"emotional"}, {text:"😶 아무 말도 않는다", mood:"calm"}],
+        [{text:"🫂 안아준다",           mood:"close"},     {text:"💧 같이 눈물을 흘린다", mood:"emotional"}],
+    ],
+    intimate: [
+        [{text:"💕 더 가까이 다가간다", mood:"close"},   {text:"💭 지금 이 순간을 느낀다", mood:"calm"}],
+        [{text:"🫦 먼저 말을 건넨다",   mood:"bold"},    {text:"🌸 조용히 있는다",          mood:"cautious"}],
+        [{text:"👐 손을 잡는다",        mood:"close"},   {text:"👁️ 눈을 맞춘다",            mood:"direct"}],
+    ],
+    suspense: [
+        [{text:"🔍 직접 확인하러 간다",  mood:"direct"},  {text:"👀 몰래 지켜본다",    mood:"cautious"}],
+        [{text:"❓ 바로 물어본다",        mood:"direct"},  {text:"🤔 혼자 생각해본다", mood:"introspective"}],
+        [{text:"⚡ 먼저 행동한다",        mood:"bold"},    {text:"🛡️ 신중하게 접근한다", mood:"cautious"}],
+    ],
+    excited: [
+        [{text:"🎉 같이 흥분한다",      mood:"bold"},     {text:"😎 침착함을 유지한다", mood:"calm"}],
+        [{text:"🔥 더 몰아붙인다",      mood:"bold"},     {text:"⏸️ 잠깐 멈춘다",       mood:"cautious"}],
+        [{text:"😱 솔직한 반응을 보인다", mood:"emotional"}, {text:"🙂 평정심을 보인다", mood:"calm"}],
+    ],
+    default: [
+        [{text:"⚡ 적극적으로 행동한다", mood:"bold"},    {text:"🤔 신중하게 지켜본다", mood:"cautious"}],
+        [{text:"💬 솔직하게 말한다",     mood:"honest"},  {text:"🤐 적당히 둘러댄다",   mood:"evasive"}],
+        [{text:"🤝 도움을 청한다",       mood:"help"},    {text:"💪 스스로 해결한다",   mood:"solo"}],
+        [{text:"❤️ 믿어보기로 한다",     mood:"trust"},   {text:"↩️ 한 발 물러선다",   mood:"retreat"}],
+    ],
+};
+
+function detectContext(lines) {
+    const text = lines.map(l => l.text).join(' ');
+    let best = 'default', bestScore = 0;
+    for (const [ctx, words] of Object.entries(CONTEXT_KEYWORDS)) {
+        const score = words.filter(w => text.includes(w)).length;
+        if (score > bestScore) { bestScore = score; best = ctx; }
+    }
+    return best;
+}
+
+function getContextualChoice(lines, segIndex) {
+    const ctx   = detectContext(lines);
+    const bank  = CONTEXT_CHOICES[ctx] || CONTEXT_CHOICES.default;
+    return bank[segIndex % bank.length];
+}
+
+/* ══════════════════════════════════════
+   캐릭터 이미지
+   SVG 제거 → 글로우 펄스 로딩 + 실제 이미지 fade-in
+══════════════════════════════════════ */
+
+const CHAR_THEMES = {
+    main: { glow:'rgba(232,121,249,0.6)', glow2:'rgba(167,139,250,0.3)' },
+    a:    { glow:'rgba(251,146,60,0.6)',  glow2:'rgba(239,68,68,0.3)' },
+    b:    { glow:'rgba(56,189,248,0.6)',  glow2:'rgba(99,102,241,0.3)' },
+};
+
 const TURBO_PROMPTS = {
     main: ['kawaii anime girl smiling', 'cute anime girl pink hair', 'pretty anime schoolgirl'],
     a:    ['energetic anime girl red hair', 'bold anime girl action', 'confident anime girl orange'],
-    b:    ['calm anime girl blue hair', 'gentle shy anime girl', 'quiet anime girl silver'],
+    b:    ['calm anime girl blue hair',    'gentle shy anime girl',   'quiet anime girl silver'],
 };
 
 function getTurboUrl(sceneId) {
@@ -304,90 +377,36 @@ function getTurboUrl(sceneId) {
     return `https://image.pollinations.ai/prompt/${encodeURIComponent(p)}?model=turbo&width=420&height=680&nologo=true&seed=${seed}`;
 }
 
-/* SVG 베이스 캐릭터 (항상 즉시 표시) */
-const SvgChar = ({ type, opacity }) => {
-    const t = CHAR_THEMES[type];
-    return (
-        <div style={{
-            position:'absolute', inset:0,
-            display:'flex', alignItems:'flex-end', justifyContent:'center',
-            opacity: opacity ?? 1, transition:'opacity 1s ease',
-        }}>
-            <div style={{
-                position:'absolute', bottom:'20%', left:'50%', transform:'translateX(-50%)',
-                width:'260px', height:'420px',
-                background:`radial-gradient(ellipse at 50% 35%, ${t.glow} 0%, transparent 65%)`,
-            }}/>
-            <svg viewBox="0 0 240 480" xmlns="http://www.w3.org/2000/svg"
-                style={{ height:'70vh', width:'auto', marginBottom:'160px',
-                    filter:`drop-shadow(0 0 20px ${t.glow})`, animation:'fadeInUp 0.5s ease-out' }}>
-                <defs>
-                    <linearGradient id={`dg_${type}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={t.d1}/><stop offset="100%" stopColor={t.d2}/>
-                    </linearGradient>
-                    <linearGradient id={`hg_${type}`} x1="0" y1="0" x2="0.3" y2="1">
-                        <stop offset="0%" stopColor={t.h1}/><stop offset="55%" stopColor={t.h2}/><stop offset="100%" stopColor={t.h3}/>
-                    </linearGradient>
-                    <radialGradient id={`sg_${type}`} cx="50%" cy="38%">
-                        <stop offset="0%" stopColor="#fff8f0"/><stop offset="100%" stopColor="#fde8d8"/>
-                    </radialGradient>
-                </defs>
-                <path d="M60,290 Q42,390 38,478 L202,478 Q198,390 180,290 Z" fill={`url(#dg_${type})`}/>
-                <path d="M100,290 Q98,375 96,478 L118,478 Q118,375 116,290 Z" fill="white" opacity="0.10"/>
-                <path d="M76,215 Q68,258 60,294 L180,294 Q172,258 164,215 Z" fill={`url(#dg_${type})`}/>
-                <rect x="107" y="198" width="26" height="28" rx="7" fill={`url(#sg_${type})`}/>
-                <path d="M74,222 Q56,252 54,288 Q64,280 70,248 L80,224 Z" fill={`url(#sg_${type})`}/>
-                <path d="M166,222 Q184,252 186,288 Q176,280 170,248 L160,224 Z" fill={`url(#sg_${type})`}/>
-                <ellipse cx="120" cy="148" rx="66" ry="70" fill={`url(#hg_${type})`}/>
-                <path d="M62,140 Q44,210 48,295 Q62,272 65,228 Q62,185 72,150 Z" fill={`url(#hg_${type})`}/>
-                <path d="M178,140 Q196,210 192,295 Q178,272 175,228 Q178,185 168,150 Z" fill={`url(#hg_${type})`}/>
-                <ellipse cx="120" cy="155" rx="50" ry="55" fill={`url(#sg_${type})`}/>
-                <path d="M70,140 Q74,100 120,92 Q166,100 170,140 Q158,114 140,112 Q130,104 120,106 Q110,104 100,112 Q82,114 70,140 Z" fill={`url(#hg_${type})`}/>
-                <path d="M92,112 Q88,132 90,154 Q96,134 98,112 Z" fill={t.h2} opacity="0.85"/>
-                <path d="M120,106 Q117,128 120,150 Q123,128 120,106 Z" fill={t.h2} opacity="0.85"/>
-                <path d="M148,112 Q152,132 150,154 Q144,134 142,112 Z" fill={t.h2} opacity="0.85"/>
-                <ellipse cx="102" cy="155" rx="13" ry="14" fill="white"/>
-                <ellipse cx="102" cy="157" rx="9" ry="10" fill={t.eye}/>
-                <ellipse cx="102" cy="157" rx="5" ry="6" fill="#180a2e"/>
-                <ellipse cx="98" cy="153" rx="3" ry="3" fill="white" opacity="0.95"/>
-                <path d="M90,146 Q102,141 114,146" stroke={t.h3} strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-                <ellipse cx="138" cy="155" rx="13" ry="14" fill="white"/>
-                <ellipse cx="138" cy="157" rx="9" ry="10" fill={t.eye}/>
-                <ellipse cx="138" cy="157" rx="5" ry="6" fill="#180a2e"/>
-                <ellipse cx="134" cy="153" rx="3" ry="3" fill="white" opacity="0.95"/>
-                <path d="M126,146 Q138,141 150,146" stroke={t.h3} strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-                <path d="M118,170 Q120,175 122,170" stroke="#e0a896" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-                <path d="M110,182 Q120,190 130,182" stroke="#e8888a" strokeWidth="2.2" fill="none" strokeLinecap="round"/>
-                <path d="M113,182 Q120,187 127,182" fill="#fca5a5" opacity="0.55"/>
-                <ellipse cx="90" cy="174" rx="10" ry="5" fill="#ffb3ba" opacity="0.4"/>
-                <ellipse cx="150" cy="174" rx="10" ry="5" fill="#ffb3ba" opacity="0.4"/>
-                <path d="M148,108 L168,94 L158,112 L178,102 L160,118 Z" fill={t.ribbon}/>
-                <path d="M106,268 L120,258 L134,268 L120,278 Z" fill={t.ribbon} opacity="0.95"/>
-                <path d="M110,265 Q100,253 90,258 Q100,268 110,265 Z" fill={t.ribbon} opacity="0.95"/>
-                <path d="M130,265 Q140,253 150,258 Q140,268 130,265 Z" fill={t.ribbon} opacity="0.95"/>
-            </svg>
-        </div>
-    );
-};
-
-/* 메인 CharImage: SVG 즉시 + 실제 이미지 fade-in */
 const CharImage = ({ sceneId }) => {
     const [realLoaded, setRealLoaded] = useState(false);
     const [realError,  setRealError]  = useState(false);
     const type = sceneId?.endsWith('_a') ? 'a' : sceneId?.endsWith('_b') ? 'b' : 'main';
+    const t    = CHAR_THEMES[type];
 
     useEffect(() => { setRealLoaded(false); setRealError(false); }, [sceneId]);
 
-    const url = getTurboUrl(sceneId);
-
     return (
         <div style={{position:'absolute', inset:0, zIndex:10, pointerEvents:'none'}}>
-            {/* ① SVG: 실제 이미지 뜨면 fade-out */}
-            <SvgChar type={type} opacity={realLoaded ? 0 : 1}/>
 
-            {/* ② 실제 애니 이미지: 완성 시 fade-in */}
+            {/* 로딩 중: 글로우 펄스 */}
+            {!realLoaded && (
+                <div style={{
+                    position:'absolute', inset:0,
+                    display:'flex', alignItems:'center', justifyContent:'center',
+                }}>
+                    <div style={{
+                        width:'200px', height:'400px',
+                        borderRadius:'50% 50% 0 0',
+                        background:`radial-gradient(ellipse at 50% 40%, ${t.glow} 0%, ${t.glow2} 50%, transparent 75%)`,
+                        animation:'pulse 2s ease-in-out infinite',
+                        marginBottom:'160px',
+                    }}/>
+                </div>
+            )}
+
+            {/* 실제 이미지 */}
             {!realError && (
-                <img src={url} alt=""
+                <img src={getTurboUrl(sceneId)} alt=""
                     onLoad={()=>setRealLoaded(true)}
                     onError={()=>setRealError(true)}
                     style={{
@@ -400,14 +419,14 @@ const CharImage = ({ sceneId }) => {
                 />
             )}
 
-            {/* 로딩 중 힌트 */}
+            {/* 로딩 텍스트 */}
             {!realLoaded && !realError && (
                 <div style={{
                     position:'absolute', bottom:'190px', left:'50%',
                     transform:'translateX(-50%)', whiteSpace:'nowrap',
-                    fontSize:'10px', color:'rgba(255,255,255,0.22)',
-                    fontWeight:700, letterSpacing:'0.1em',
-                }}>✦ 이미지 생성 중 (~5초)</div>
+                    fontSize:'10px', color:'rgba(255,255,255,0.25)',
+                    fontWeight:700, letterSpacing:'0.12em',
+                }}>✦ 이미지 생성 중...</div>
             )}
 
             {/* 하단 그라디언트 */}
