@@ -280,178 +280,45 @@ function parseNovel(rawText, title="") {
 }
 
 /* ══════════════════════════════════════
-   CSS 애니 캐릭터 (네트워크 불필요, 즉시 렌더링)
-   sceneId 끝자리로 타입 판별:
-     main → 핑크/보라  분기A → 오렌지/빨강  분기B → 파랑/청록
+   캐릭터 이미지 (로딩 실루엣 → 페이드인)
 ══════════════════════════════════════ */
-const CHAR_THEMES = {
-    main: {
-        hair:   ['#d946a0','#9333ea','#7e22ce'],
-        skin:   '#fde8d8',
-        dress:  ['#7c3aed','#4f46e5'],
-        eye:    '#7c3aed',
-        ribbon: '#f472b6',
-        glow:   'rgba(216,70,160,0.25)',
-    },
-    a: {
-        hair:   ['#f97316','#dc2626','#b91c1c'],
-        skin:   '#fde8d8',
-        dress:  ['#dc2626','#9f1239'],
-        eye:    '#f97316',
-        ribbon: '#fbbf24',
-        glow:   'rgba(220,38,38,0.25)',
-    },
-    b: {
-        hair:   ['#38bdf8','#0ea5e9','#0369a1'],
-        skin:   '#fde8d8',
-        dress:  ['#0ea5e9','#6366f1'],
-        eye:    '#0ea5e9',
-        ribbon: '#a5f3fc',
-        glow:   'rgba(14,165,233,0.25)',
-    },
-};
-
-const CharImage = ({ sceneId }) => {
-    const type = sceneId?.endsWith('_a') ? 'a'
-               : sceneId?.endsWith('_b') ? 'b'
-               : 'main';
-    const t = CHAR_THEMES[type];
-    const [g1, g2, g3] = t.hair;
+const CharImage = ({ src }) => {
+    const [loaded, setLoaded] = useState(false);
+    const [err,    setErr]    = useState(false);
+    useEffect(()=>{ setLoaded(false); setErr(false); }, [src]);
 
     return (
-        <div style={{
-            position:'absolute', inset:0, zIndex:10, pointerEvents:'none',
-            display:'flex', alignItems:'flex-end', justifyContent:'center',
-            overflow:'hidden',
-        }}>
-            {/* 뒷 빛 효과 */}
+        <div style={{position:'absolute',inset:0,zIndex:10,pointerEvents:'none'}}>
+            {/* 로딩 중 실루엣 */}
+            {!loaded && !err && (
+                <div style={{
+                    position:'absolute', bottom:0, left:'50%', transform:'translateX(-50%)',
+                    width:'60%', height:'80%',
+                    background:'linear-gradient(180deg,rgba(220,38,38,0.06) 0%,rgba(220,38,38,0.02) 70%,transparent 100%)',
+                    borderRadius:'48% 48% 0 0',
+                }}/>
+            )}
+            {/* 실제 이미지: 전체화면 꽉 채움 */}
+            {!err && (
+                <img
+                    src={src} alt=""
+                    onLoad={()=>setLoaded(true)}
+                    onError={()=>setErr(true)}
+                    style={{
+                        position:'absolute', inset:0,
+                        width:'100%', height:'100%',
+                        objectFit:'cover',
+                        objectPosition:'top center',
+                        opacity: loaded ? 0.92 : 0,
+                        transition:'opacity 1s ease',
+                    }}
+                />
+            )}
+            {/* 하단 그라디언트 - 대화창과 자연 연결 */}
             <div style={{
-                position:'absolute',
-                bottom:'15%', left:'50%', transform:'translateX(-50%)',
-                width:'320px', height:'500px',
-                background:`radial-gradient(ellipse at 50% 40%, ${t.glow} 0%, transparent 70%)`,
-                filter:'blur(30px)',
-            }}/>
-
-            {/* 캐릭터 SVG */}
-            <svg
-                viewBox="0 0 260 520"
-                style={{
-                    height:'88%', width:'auto', maxWidth:'300px',
-                    filter:`drop-shadow(0 0 18px ${t.glow.replace('0.25','0.5')})`,
-                    animation:'fadeInUp 0.6s ease-out forwards',
-                }}
-            >
-                {/* ── 드레스/몸 ── */}
-                <defs>
-                    <linearGradient id={`dress_${type}`} x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={t.dress[0]}/>
-                        <stop offset="100%" stopColor={t.dress[1]}/>
-                    </linearGradient>
-                    <linearGradient id={`hair_${type}`} x1="0" y1="0" x2="0.5" y2="1">
-                        <stop offset="0%" stopColor={g1}/>
-                        <stop offset="60%" stopColor={g2}/>
-                        <stop offset="100%" stopColor={g3}/>
-                    </linearGradient>
-                    <radialGradient id={`skin_${type}`} cx="50%" cy="40%">
-                        <stop offset="0%" stopColor="#fff5ee"/>
-                        <stop offset="100%" stopColor={t.skin}/>
-                    </radialGradient>
-                </defs>
-
-                {/* 스커트 */}
-                <path d={`M80,310 Q65,420 50,510 L210,510 Q195,420 180,310 Z`}
-                      fill={`url(#dress_${type})`} opacity="0.95"/>
-                {/* 스커트 하이라이트 */}
-                <path d={`M110,310 Q105,400 100,510 L130,510 Q128,400 125,310 Z`}
-                      fill="white" opacity="0.08"/>
-
-                {/* 상의/허리 */}
-                <path d={`M95,230 Q90,280 80,315 L180,315 Q170,280 165,230 Z`}
-                      fill={`url(#dress_${type})`} opacity="0.98"/>
-
-                {/* 리본 (허리) */}
-                <path d={`M115,285 L130,275 L145,285 L130,295 Z`} fill={t.ribbon} opacity="0.9"/>
-                <path d={`M120,282 Q110,270 100,275 Q110,285 120,282 Z`} fill={t.ribbon} opacity="0.9"/>
-                <path d={`M140,282 Q150,270 160,275 Q150,285 140,282 Z`} fill={t.ribbon} opacity="0.9"/>
-
-                {/* 팔 (왼쪽) */}
-                <path d={`M92,235 Q75,260 72,300 Q80,295 85,255 L95,240 Z`}
-                      fill={`url(#skin_${type})`}/>
-                {/* 팔 (오른쪽) */}
-                <path d={`M168,235 Q185,260 188,300 Q180,295 175,255 L165,240 Z`}
-                      fill={`url(#skin_${type})`}/>
-
-                {/* 목 */}
-                <rect x="118" y="210" width="24" height="30" rx="6"
-                      fill={`url(#skin_${type})`}/>
-
-                {/* ── 머리카락 (뒤) ── */}
-                <ellipse cx="130" cy="165" rx="68" ry="75"
-                         fill={`url(#hair_${type})`} opacity="0.95"/>
-                {/* 긴 머리카락 (왼) */}
-                <path d={`M70,155 Q55,220 60,310 Q75,290 78,240 Q75,200 85,165 Z`}
-                      fill={`url(#hair_${type})`}/>
-                {/* 긴 머리카락 (오른) */}
-                <path d={`M190,155 Q205,220 200,310 Q185,290 182,240 Q185,200 175,165 Z`}
-                      fill={`url(#hair_${type})`}/>
-
-                {/* ── 얼굴 ── */}
-                <ellipse cx="130" cy="172" rx="52" ry="58"
-                         fill={`url(#skin_${type})`}/>
-
-                {/* 머리카락 (앞 / 앞머리) */}
-                <path d={`M78,155 Q82,115 130,108 Q178,115 182,155
-                          Q170,130 150,128 Q140,118 130,120 Q120,118 110,128 Q90,130 78,155 Z`}
-                      fill={`url(#hair_${type})`}/>
-                {/* 앞머리 가닥 */}
-                <path d={`M100,128 Q95,148 98,168 Q104,148 106,128 Z`}
-                      fill={g2} opacity="0.8"/>
-                <path d={`M130,120 Q127,142 130,162 Q133,142 130,120 Z`}
-                      fill={g2} opacity="0.8"/>
-                <path d={`M160,128 Q165,148 162,168 Q156,148 154,128 Z`}
-                      fill={g2} opacity="0.8"/>
-
-                {/* ── 눈 (왼) ── */}
-                <ellipse cx="112" cy="172" rx="13" ry="15" fill="white"/>
-                <ellipse cx="112" cy="174" rx="10" ry="11" fill={t.eye}/>
-                <ellipse cx="112" cy="174" rx="6"  ry="7"  fill="#1a0a2e"/>
-                <ellipse cx="108" cy="170" rx="3"  ry="3"  fill="white" opacity="0.9"/>
-                <ellipse cx="115" cy="176" rx="1.5" ry="1.5" fill="white" opacity="0.7"/>
-                {/* 속눈썹 */}
-                <path d={`M100,162 Q112,157 124,162`} stroke={g3} strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-
-                {/* ── 눈 (오른) ── */}
-                <ellipse cx="148" cy="172" rx="13" ry="15" fill="white"/>
-                <ellipse cx="148" cy="174" rx="10" ry="11" fill={t.eye}/>
-                <ellipse cx="148" cy="174" rx="6"  ry="7"  fill="#1a0a2e"/>
-                <ellipse cx="144" cy="170" rx="3"  ry="3"  fill="white" opacity="0.9"/>
-                <ellipse cx="151" cy="176" rx="1.5" ry="1.5" fill="white" opacity="0.7"/>
-                <path d={`M136,162 Q148,157 160,162`} stroke={g3} strokeWidth="2.5" fill="none" strokeLinecap="round"/>
-
-                {/* 코 */}
-                <path d={`M128,188 Q130,193 132,188`} stroke={t.skin} strokeWidth="1.5" fill="none"
-                      strokeLinecap="round" opacity="0.6"/>
-
-                {/* 입 */}
-                <path d={`M120,200 Q130,207 140,200`} stroke="#e8888a" strokeWidth="2" fill="none"
-                      strokeLinecap="round"/>
-                <path d={`M123,200 Q130,204 137,200`} fill="#f9a8b0" opacity="0.5"/>
-
-                {/* 볼터치 */}
-                <ellipse cx="100" cy="192" rx="10" ry="5" fill="#ffb3ba" opacity="0.35"/>
-                <ellipse cx="160" cy="192" rx="10" ry="5" fill="#ffb3ba" opacity="0.35"/>
-
-                {/* 머리 장식 (리본/핀) */}
-                <path d={`M155,125 L175,110 L165,128 L185,118 L168,132 Z`}
-                      fill={t.ribbon} opacity="0.9"/>
-            </svg>
-
-            {/* 하단 그라디언트 */}
-            <div style={{
-                position:'absolute', bottom:0, left:0, right:0, height:'45%',
-                background:'linear-gradient(to top,#000 0%,rgba(0,0,0,0.5) 50%,transparent 100%)',
-                zIndex:2,
+                position:'absolute', bottom:0, left:0, right:0, height:'50%',
+                background:'linear-gradient(to top, #000 0%, rgba(0,0,0,0.55) 50%, transparent 100%)',
+                zIndex:1,
             }}/>
         </div>
     );
@@ -690,7 +557,7 @@ const App = () => {
                 </div>
 
                 {/* 캐릭터: 전체화면 */}
-                {sceneData.character && <CharImage key={sceneId} sceneId={sceneId}/>}
+                {sceneData.character && <CharImage key={sceneId} src={sceneData.character.charImage}/>}
 
                 {/* 상단 HUD */}
                 <div className="absolute top-0 left-0 right-0 z-50 flex items-center justify-between px-4 pt-4">
