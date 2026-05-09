@@ -10,167 +10,195 @@
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.21/mammoth.browser.min.js"></script>
 <style>
-@keyframes fadeIn  { from{opacity:0} to{opacity:1} }
-@keyframes blink   { 0%,100%{opacity:1} 50%{opacity:0} }
-@keyframes shimmer { 0%{background-position:-200% center} 100%{background-position:200% center} }
-@keyframes pulse   { 0%,100%{opacity:0.3;transform:scale(1)} 50%{opacity:0.65;transform:scale(1.05)} }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+@keyframes blink  { 0%,100%{opacity:1} 50%{opacity:0} }
+@keyframes shimmer{ 0%{background-position:-200% center} 100%{background-position:200% center} }
+@keyframes pulse  { 0%,100%{opacity:0.3;transform:scale(1)} 50%{opacity:0.65;transform:scale(1.05)} }
 
-* { box-sizing:border-box; margin:0; padding:0; }
-body {
+*, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+
+html, body {
+  width:100%; height:100%;
   background:#000; color:#fff;
   font-family:'Pretendard',-apple-system,BlinkMacSystemFont,sans-serif;
-  overscroll-behavior:none; -webkit-user-select:none; user-select:none;
-  height:100dvh; overflow:hidden;
-}
-
-/* ── 상단 텍스트 패널 ── */
-#top-panel {
-  position:fixed;
-  top:0; left:0; right:0;
-  height:50dvh;
-  background:rgba(6,6,8,0.96);
-  border-bottom:1px solid rgba(255,255,255,0.08);
-  display:flex; flex-direction:column;
-  z-index:20;
-}
-#text-scroll {
-  flex:1;
-  overflow-y:auto;
-  padding:20px 20px 8px;
-  -webkit-overflow-scrolling:touch;
-}
-#text-scroll::-webkit-scrollbar { width:3px; }
-#text-scroll::-webkit-scrollbar-thumb { background:rgba(220,38,38,0.4); border-radius:2px; }
-#text-footer {
-  padding:6px 18px 10px;
-  display:flex; align-items:center; justify-content:space-between;
-  border-top:1px solid rgba(255,255,255,0.05);
-  flex-shrink:0;
-}
-
-/* ── 하단 이미지+메뉴 패널 ── */
-#bottom-panel {
-  position:fixed;
-  top:50dvh; left:0; right:0; bottom:0;
-  display:flex; flex-direction:column;
-  z-index:10;
-}
-#img-area {
-  flex:1;
-  position:relative;
   overflow:hidden;
-  background:#000;
-}
-#img-area img {
-  width:100%; height:100%;
-  object-fit:cover;
-  object-position:top center;
-  transition:opacity 1s ease;
-}
-#img-area .img-fade {
-  position:absolute; inset:0;
-  background:linear-gradient(to bottom, rgba(6,6,8,0.45) 0%, transparent 30%, transparent 65%, rgba(0,0,0,0.3) 100%);
-  pointer-events:none;
-}
-#controls {
-  flex-shrink:0;
-  background:rgba(8,8,10,0.97);
-  border-top:1px solid rgba(255,255,255,0.08);
-  padding:8px 10px;
-  display:flex; align-items:center; gap:6px; flex-wrap:wrap;
+  -webkit-user-select:none; user-select:none;
+  overscroll-behavior:none;
 }
 
-/* 버튼 스타일 */
-.btn {
-  background:rgba(255,255,255,0.06);
-  border:1px solid rgba(255,255,255,0.1);
-  border-radius:999px;
-  color:#d4d4d8;
-  font-size:11px; font-weight:800;
-  padding:5px 10px;
-  cursor:pointer; white-space:nowrap;
-  transition:all 0.15s;
-  -webkit-tap-highlight-color:transparent;
-}
-.btn:active { transform:scale(0.95); }
-.btn.on { background:#dc2626; border-color:#dc2626; color:#fff; }
-.btn.s  { background:rgba(34,197,94,0.15); border-color:rgba(34,197,94,0.3); color:#4ade80; }
+/* ══════════════════════════════════
+   PLAY 화면: 상단 이미지 / 하단 텍스트
+══════════════════════════════════ */
 
-/* 목소리 선택 */
-#voice-select {
-  background:rgba(255,255,255,0.06);
-  border:1px solid rgba(255,255,255,0.1);
-  border-radius:8px;
-  color:#d4d4d8;
-  font-size:11px; font-weight:700;
-  padding:5px 6px;
-  cursor:pointer;
-  flex:1; min-width:0;
-  max-width:140px;
+/* 이미지 영역: 화면 상단 50% */
+#img-panel {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 50vh;
+  background: #000;
+  overflow: hidden;
+  z-index: 10;
+}
+#img-panel img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  transition: opacity 1s ease;
+}
+#img-panel .grad {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom,
+    rgba(0,0,0,0.1) 0%,
+    transparent 35%,
+    rgba(0,0,0,0.55) 100%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+/* 텍스트 영역: 화면 하단 50% */
+#txt-panel {
+  position: fixed;
+  top: 50vh;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #080808;
+  border-top: 1px solid rgba(255,255,255,0.1);
+  display: flex;
+  flex-direction: column;
+  z-index: 20;
+}
+#txt-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 18px 6px;
+  cursor: pointer;
+  -webkit-overflow-scrolling: touch;
+}
+#txt-scroll::-webkit-scrollbar { width: 3px; }
+#txt-scroll::-webkit-scrollbar-thumb { background: rgba(220,38,38,0.4); border-radius: 2px; }
+
+#txt-footer {
+  flex-shrink: 0;
+  padding: 4px 16px 6px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+#ctrl-bar {
+  flex-shrink: 0;
+  background: #0a0a0a;
+  border-top: 1px solid rgba(255,255,255,0.07);
+  padding: 7px 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+/* 버튼 */
+.vbtn {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 999px;
+  color: #d4d4d8;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  -webkit-tap-highlight-color: transparent;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+.vbtn:active { transform: scale(0.94); }
+.vbtn.on { background: #dc2626; border-color: #dc2626; color: #fff; }
+
+/* 목소리 드롭다운 */
+#voice-sel {
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 8px;
+  color: #d4d4d8;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 5px 6px;
+  cursor: pointer;
+  flex: 1;
+  min-width: 0;
+  max-width: 150px;
 }
 
 /* 라이브러리 스크롤 */
-.lib-scroll { overflow-y:auto; }
-.lib-scroll::-webkit-scrollbar { width:4px; }
-.lib-scroll::-webkit-scrollbar-thumb { background:#dc2626; border-radius:4px; }
+.lscroll { overflow-y: auto; height: 100%; }
+.lscroll::-webkit-scrollbar { width: 4px; }
+.lscroll::-webkit-scrollbar-thumb { background: #dc2626; border-radius: 4px; }
 
 .shimmer {
-  background:linear-gradient(90deg,#ef4444,#fca5a5,#ef4444);
-  background-size:200% auto;
-  -webkit-background-clip:text; -webkit-text-fill-color:transparent; background-clip:text;
-  animation:shimmer 2s linear infinite;
+  background: linear-gradient(90deg,#ef4444,#fca5a5,#ef4444);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 2s linear infinite;
 }
-.blink { animation:blink 0.8s step-end infinite; }
-.fade  { animation:fadeIn 0.7s ease; }
+.blink { animation: blink 0.8s step-end infinite; }
+.fadein { animation: fadeIn 0.7s ease forwards; }
 </style>
 </head>
 <body>
-<div id="root"></div>
+<div id="root" style="width:100%;height:100%;"></div>
 <script type="text/babel">
 const { useState, useEffect, useRef } = React;
 
 /* ─── 아이콘 ─── */
-const SI = ({d,w=18,h=18,c=""}) =>
-  <svg width={w} height={h} className={c} viewBox="0 0 24 24" fill="none"
+const SI = ({d,w=18,h=18}) =>
+  <svg width={w} height={h} viewBox="0 0 24 24" fill="none"
     stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d={d}/>
   </svg>;
-const Back   = () => <SI d="M19 12H5M12 19l-7-7 7-7" w={13} h={13}/>;
-const Upload = () => <SI d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" w={13} h={13}/>;
-const PlayI  = () => <svg width={11} height={11} viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
-const PauseI = () => <svg width={11} height={11} viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>;
-const ChevR  = () => <SI d="M9 18l6-6-6-6" w={11} h={11} c="text-red-500"/>;
-const TrashI = () => <SI d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" w={13} h={13}/>;
-const DlI    = () => <SI d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" w={13} h={13}/>;
+const IBack  = () => <SI d="M19 12H5M12 19l-7-7 7-7" w={13} h={13}/>;
+const IUp    = () => <SI d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" w={13} h={13}/>;
+const IPlay  = () => <svg width={11} height={11} viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>;
+const IPause = () => <svg width={11} height={11} viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>;
+const IChev  = () => <SI d="M9 18l6-6-6-6" w={11} h={11}/>;
+const ITrash = () => <SI d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" w={13} h={13}/>;
+const IDl    = () => <SI d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3" w={13} h={13}/>;
 
 /* ─── 분위기 감지 ─── */
 const MOOD_KW = {
-  romance : ['좋아','사랑','설레','두근','마음','고백','키스','보고싶','반해','설렘'],
+  romance : ['좋아','사랑','설레','두근','마음','고백','키스','보고싶','반해'],
   intimate: ['안아','따뜻','향기','떨려','단둘이','조용히','심장','뜨거','포근'],
   sad     : ['울고','슬프','힘들','눈물','아프','외로','미안','후회','그립'],
   tension : ['화가','싫어','배신','거짓말','위험','이상해','멈춰','수상'],
   excited : ['드디어','결국','대박','설마','해냈','성공'],
 };
-const MOOD_FILTER = {
-  romance :'brightness(0.6) sepia(0.3) hue-rotate(-10deg) saturate(1.2)',
-  intimate:'brightness(0.5) sepia(0.35) hue-rotate(-18deg)',
-  sad     :'brightness(0.45) hue-rotate(185deg) saturate(0.75)',
-  tension :'brightness(0.42) contrast(1.2) saturate(0.85)',
-  excited :'brightness(0.65) saturate(1.3)',
-  default :'brightness(0.55)',
+const MOOD_F = {
+  romance : 'brightness(0.6) sepia(0.3) hue-rotate(-10deg) saturate(1.2)',
+  intimate: 'brightness(0.5) sepia(0.35) hue-rotate(-18deg)',
+  sad     : 'brightness(0.45) hue-rotate(185deg) saturate(0.75)',
+  tension : 'brightness(0.42) contrast(1.2) saturate(0.85)',
+  excited : 'brightness(0.65) saturate(1.3)',
+  default : 'brightness(0.6)',
 };
-function detectMood(lines=[]) {
+function getMood(lines=[]) {
   const t = lines.map(l=>l.text).join(' ');
   let best='default', top=0;
-  for (const [m,ws] of Object.entries(MOOD_KW)) {
+  for(const [m,ws] of Object.entries(MOOD_KW)){
     const s=ws.filter(w=>t.includes(w)).length;
     if(s>top){top=s;best=m;}
   }
   return best;
 }
 
-/* ─── 이미지 URL ─── */
-const BG_POOL = [
+/* ─── 배경 풀 ─── */
+const BGS = [
   "anime visual novel background luxury apartment night city rain",
   "anime visual novel background dark office late night lamp warm",
   "anime visual novel background rooftop city sunset golden hour",
@@ -182,25 +210,25 @@ const BG_POOL = [
   "anime visual novel background beach sunset twilight calm",
   "anime visual novel background forest path afternoon light",
 ];
-const bgUrl = i => `https://image.pollinations.ai/prompt/${encodeURIComponent(BG_POOL[i%BG_POOL.length])}?width=800&height=600&nologo=true&seed=${i*41+3}`;
+const bgUrl = i => `https://image.pollinations.ai/prompt/${encodeURIComponent(BGS[i%BGS.length])}?width=800&height=500&nologo=true&seed=${i*41+3}`;
 
 /* ─── 파서 ─── */
 function parse(raw, title='') {
   const rows = raw.split('\n').map(l=>l.trim()).filter(l=>l.length>2);
-  const dlines = rows.map(line=>{
+  const dl = rows.map(line=>{
     const m=line.match(/^([^:：]{1,12})[：:]\s*(.+)$/);
-    if(m) return {speaker:m[1].trim(),text:m[2].trim()};
+    if(m) return {speaker:m[1].trim(), text:m[2].trim()};
     if(line.startsWith('"')||line.startsWith('"')) return {speaker:'???',text:line};
     return {speaker:'서술',text:line};
   });
-  const LPS=Math.max(3,Math.min(6,Math.floor(dlines.length/5)));
+  const LPS=Math.max(3,Math.min(6,Math.floor(dl.length/5)));
   const segs=[];
-  for(let i=0;i<dlines.length;i+=LPS) segs.push(dlines.slice(i,i+LPS));
+  for(let i=0;i<dl.length;i+=LPS) segs.push(dl.slice(i,i+LPS));
   const sid='stage_'+Date.now(), ts=Date.now();
   const scenes={};
   segs.forEach((seg,i)=>{
     scenes[`scene_${i}`]={
-      bg:bgUrl(i), lines:seg, mood:detectMood(seg),
+      bg:bgUrl(i), lines:seg, mood:getMood(seg),
       nextScene:i<segs.length-1?`scene_${i+1}`:null,
       isLast:i===segs.length-1,
     };
@@ -216,63 +244,54 @@ function parse(raw, title='') {
 /* ─── 앱 ─── */
 const App = () => {
   const [screen,  setScreen]  = useState('LIBRARY');
-  const [library, setLibrary] = useState([]);
+  const [library, setLib]     = useState([]);
   const [novel,   setNovel]   = useState(null);
   const [raw,     setRaw]     = useState('');
   const [ttl,     setTtl]     = useState('');
   const [appTo,   setAppTo]   = useState('NEW');
 
   // 이미지
-  const [localImgs, setLocalImgs] = useState([]); // 파일 picker
-  const [dirImgs,   setDirImgs]   = useState([]); // ./image/ 디렉토리
-  const [sceneBg,   setSceneBg]   = useState(null);
-  const [imgLoaded, setImgLoaded] = useState(false);
+  const [localImgs, setLocalImgs] = useState([]);
+  const [dirImgs,   setDirImgs]   = useState([]);
+  const [curBg,     setCurBg]     = useState(null);
+  const [imgOk,     setImgOk]     = useState(false);
 
   // 재생
-  const [stageId, setStageId] = useState(null);
-  const [sceneId, setSceneId] = useState(null);
-  const [lineIdx, setLineIdx] = useState(0);
-  const [disp,    setDisp]    = useState('');
-  const [typing,  setTyping]  = useState(false);
+  const [stageId, setSId]  = useState(null);
+  const [sceneId, setScId] = useState(null);
+  const [li,      setLi]   = useState(0);
+  const [disp,    setDisp] = useState('');
+  const [typing,  setTyp]  = useState(false);
 
   // 옵션
-  const [auto,    setAuto]    = useState(false);
-  const [speed,   setSpeed]   = useState(1);
-  const [tts,     setTts]     = useState(false);
-  const [voices,  setVoices]  = useState([]);
-  const [voiceN,  setVoiceN]  = useState('');
-  const [fs,      setFs]      = useState(17);
-  const [showVoices, setShowVoices] = useState(false);
+  const [auto,   setAuto]  = useState(false);
+  const [spd,    setSpd]   = useState(1);
+  const [tts,    setTts]   = useState(false);
+  const [voices, setVoices]= useState([]);
+  const [voiceN, setVoiceN]= useState('');
+  const [fs,     setFs]    = useState(17);
 
-  const tyRef  = useRef(null);
-  const auRef  = useRef(null);
-  const txRef  = useRef(null);
-  const fnRef  = useRef({}); // 항상 최신 함수/값 참조
+  const tyR  = useRef(null);
+  const auR  = useRef(null);
+  const txR  = useRef(null);
+  const fn   = useRef({});
 
-  /* ── 저장 ── */
-  useEffect(()=>{
-    try{const s=localStorage.getItem('novel_lib');if(s)setLibrary(JSON.parse(s));}catch(e){}
-  },[]);
-  useEffect(()=>{
-    try{localStorage.setItem('novel_lib',JSON.stringify(library));}catch(e){}
-  },[library]);
+  /* 저장 */
+  useEffect(()=>{try{const s=localStorage.getItem('nvl');if(s)setLib(JSON.parse(s));}catch(e){}},[]);
+  useEffect(()=>{try{localStorage.setItem('nvl',JSON.stringify(library));}catch(e){}}, [library]);
 
-  /* ── ./image/manifest.json 로드 ── */
+  /* ./image/manifest.json 자동 로드 */
   useEffect(()=>{
     fetch('./image/manifest.json')
       .then(r=>r.json())
-      .then(list=>{
-        if(Array.isArray(list)&&list.length){
-          setDirImgs(list.map(f=>`./image/${f}`));
-        }
-      })
+      .then(list=>{if(Array.isArray(list)&&list.length) setDirImgs(list.map(f=>`./image/${f}`));})
       .catch(()=>{});
   },[]);
 
-  /* ── TTS 목소리 목록 ── */
+  /* TTS 목소리 */
   useEffect(()=>{
     const load=()=>{
-      const vs=(window.speechSynthesis?.getVoices())||[];
+      const vs=window.speechSynthesis?.getVoices()||[];
       setVoices(vs);
       if(!voiceN){
         const ko=vs.find(v=>v.lang.startsWith('ko'));
@@ -285,28 +304,30 @@ const App = () => {
     return()=>window.speechSynthesis?.removeEventListener('voiceschanged',load);
   },[]);
 
-  /* ── 파일 업로드 ── */
+  /* 파일 업로드 */
   const handleFile=e=>{
     const f=e.target.files[0];if(!f)return;
     const ext=f.name.split('.').pop().toLowerCase();
     if(ext==='txt'){const r=new FileReader();r.onload=ev=>setRaw(ev.target.result);r.readAsText(f);}
     if(ext==='docx'){const r=new FileReader();r.onload=async ev=>{const x=await mammoth.extractRawText({arrayBuffer:ev.target.result});setRaw(x.value);};r.readAsArrayBuffer(f);}
-    if(ext==='json'){const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);setLibrary(p=>[d,...p]);}catch(e){}};r.readAsText(f);}
+    if(ext==='json'){const r=new FileReader();r.onload=ev=>{try{const d=JSON.parse(ev.target.result);setLib(p=>[d,...p]);}catch(e){}};r.readAsText(f);}
     e.target.value=null;
   };
   const handleImgs=e=>{
-    const files=Array.from(e.target.files).filter(f=>f.type.startsWith('image/'));
+    const files=Array.from(e.target.files).filter(f=>
+      f.type.startsWith('image/')||/\.(jpe?g|png|gif|webp|bmp|svg|avif|heic|tiff?)$/i.test(f.name));
+    if(!files.length)return;
     setLocalImgs(p=>{p.forEach(u=>URL.revokeObjectURL(u));return files.map(f=>URL.createObjectURL(f));});
     e.target.value=null;
   };
 
-  /* ── 생성 ── */
+  /* 생성 */
   const generate=()=>{
     if(!raw.trim()){alert('텍스트를 입력해주세요.');return;}
     const n=parse(raw,ttl.trim());
-    if(appTo==='NEW'){setLibrary(p=>[n,...p]);setRaw('');setTtl('');setAppTo('NEW');play(n);}
+    if(appTo==='NEW'){setLib(p=>[n,...p]);setRaw('');setTtl('');setAppTo('NEW');play(n);}
     else{
-      setLibrary(p=>{
+      setLib(p=>{
         const lib=[...p],idx=lib.findIndex(x=>x.id===appTo);
         if(idx!==-1){const t=JSON.parse(JSON.stringify(lib[idx]));const ns='stage_'+Date.now();t.stages.push({...n.stages[0],id:ns,title:`제 ${t.stages.length+1}화`});t.scenes[ns]=n.scenes[n.stages[0].id];lib[idx]=t;}
         return lib;
@@ -314,197 +335,203 @@ const App = () => {
       setRaw('');setTtl('');setAppTo('NEW');alert('에피소드 추가!');
     }
   };
-
-  const exportN=(e,n)=>{e.stopPropagation();const a=document.createElement('a');a.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(n,null,2));a.download=n.meta.title+'.json';a.click();};
-  const delN=(e,id)=>{e.stopPropagation();if(confirm('삭제?'))setLibrary(p=>p.filter(x=>x.id!==id));};
+  const expN=(e,n)=>{e.stopPropagation();const a=document.createElement('a');a.href='data:text/json;charset=utf-8,'+encodeURIComponent(JSON.stringify(n,null,2));a.download=n.meta.title+'.json';a.click();};
+  const delN=(e,id)=>{e.stopPropagation();if(confirm('삭제?'))setLib(p=>p.filter(x=>x.id!==id));};
 
   const play=n=>{
     setNovel(n);setAuto(false);
     const sid=n.stages[0].id;
-    setStageId(sid);setSceneId(n.stages[0].firstScene);setLineIdx(0);
-    setDisp('');setTyping(false);setSceneBg(null);setImgLoaded(false);
+    setSId(sid);setScId(n.stages[0].firstScene);setLi(0);
+    setDisp('');setTyp(false);setCurBg(null);setImgOk(false);
     setScreen('PLAY');
   };
 
-  /* ── 씬 데이터 ── */
   const SD=(novel&&stageId&&sceneId)?novel.scenes[stageId]?.[sceneId]:null;
 
-  /* ── 씬 전환 시 이미지 교체 ── */
+  /* 씬 전환 → 이미지 교체 */
   useEffect(()=>{
     if(!sceneId)return;
-    setImgLoaded(false);
+    setImgOk(false);
     const pool=[...localImgs,...dirImgs];
-    if(pool.length>0){setSceneBg(pool[Math.floor(Math.random()*pool.length)]);}
-    else setSceneBg(null);
+    setCurBg(pool.length>0 ? pool[Math.floor(Math.random()*pool.length)] : null);
   },[sceneId,localImgs,dirImgs]);
 
-  /* ── TTS ── */
+  /* TTS */
   const speak=text=>{
     if(!tts||!window.speechSynthesis)return;
     window.speechSynthesis.cancel();
     const u=new SpeechSynthesisUtterance(text);
-    u.lang='ko-KR';
-    u.rate=Math.min(2,Math.max(0.5,speed*0.9));
+    u.lang='ko-KR';u.rate=Math.min(2,Math.max(0.5,spd*0.9));
     if(voiceN){const v=voices.find(x=>x.name===voiceN);if(v)u.voice=v;}
     window.speechSynthesis.speak(u);
   };
 
-  /* ── 타이핑 ── */
+  /* 타이핑 */
   useEffect(()=>{
     if(screen!=='PLAY'||!SD)return;
-    const line=SD.lines[lineIdx];if(!line)return;
-    clearInterval(tyRef.current);
-    setTyping(true);setDisp('');let i=0;
-    tyRef.current=setInterval(()=>{
+    const line=SD.lines[li];if(!line)return;
+    clearInterval(tyR.current);
+    setTyp(true);setDisp('');let i=0;
+    tyR.current=setInterval(()=>{
       if(i<line.text.length){setDisp(line.text.substring(0,++i));}
-      else{clearInterval(tyRef.current);setTyping(false);speak(line.text);}
-    },Math.max(8,Math.floor(22/speed)));
-    return()=>clearInterval(tyRef.current);
-  },[sceneId,lineIdx,screen,speed]);
+      else{clearInterval(tyR.current);setTyp(false);speak(line.text);}
+    },Math.max(8,Math.floor(22/spd)));
+    return()=>clearInterval(tyR.current);
+  },[sceneId,li,screen,spd]);
 
-  useEffect(()=>{if(txRef.current)txRef.current.scrollTop=txRef.current.scrollHeight;},[disp]);
+  useEffect(()=>{if(txR.current)txR.current.scrollTop=txR.current.scrollHeight;},[disp]);
 
-  /* ── advance ── */
+  /* advance */
   const advance=()=>{
     if(screen!=='PLAY'||!SD)return;
     if(typing){
-      clearInterval(tyRef.current);
-      const txt=SD.lines[lineIdx].text;
-      setDisp(txt);setTyping(false);speak(txt);return;
+      clearInterval(tyR.current);
+      const txt=SD.lines[li].text;setDisp(txt);setTyp(false);speak(txt);return;
     }
-    if(lineIdx<SD.lines.length-1){setLineIdx(l=>l+1);}
-    else if(SD.nextScene){setSceneId(SD.nextScene);setLineIdx(0);}
+    if(li<SD.lines.length-1){setLi(l=>l+1);}
+    else if(SD.nextScene){setScId(SD.nextScene);setLi(0);}
   };
-  fnRef.current={advance,SD,auto,speed,typing,lineIdx};
+  fn.current={advance,SD,li,spd,typing};
 
-  /* ── 오토플레이 ── */
+  /* 오토플레이 */
   useEffect(()=>{
-    clearTimeout(auRef.current);
+    clearTimeout(auR.current);
     if(!auto||typing||screen!=='PLAY')return;
-    const {SD:sd,lineIdx:li}=fnRef.current;
-    if(!sd||(sd.isLast&&li===sd.lines.length-1))return;
-    auRef.current=setTimeout(()=>fnRef.current.advance(),Math.floor(2000/speed));
-    return()=>clearTimeout(auRef.current);
-  },[auto,typing,speed,sceneId,lineIdx,screen]);
+    const {SD:sd,li:idx}=fn.current;
+    if(!sd||(sd.isLast&&idx===sd.lines.length-1))return;
+    auR.current=setTimeout(()=>fn.current.advance(),Math.floor(2000/spd));
+    return()=>clearTimeout(auR.current);
+  },[auto,typing,spd,sceneId,li,screen]);
 
-  const isAtEnd=!typing&&SD?.lines&&lineIdx===SD.lines.length-1;
+  const isAtEnd=!typing&&SD?.lines&&li===SD.lines.length-1;
   const totalSc=novel&&stageId?Object.keys(novel.scenes[stageId]||{}).length:1;
-  const curSc=parseInt((sceneId||'').replace('scene_',''))||0;
-  const prog=Math.round(curSc/totalSc*100);
-  const mood=SD?.mood||'default';
-  const imgFilter=MOOD_FILTER[mood]||MOOD_FILTER.default;
+  const prog=Math.round((parseInt((sceneId||'').replace('scene_',''))||0)/totalSc*100);
+  const imgSrc=curBg||(SD?.bg)||null;
+  const imgFilter=MOOD_F[SD?.mood||'default']||MOOD_F.default;
 
-  /* ════════════ LIBRARY ════════════ */
+  /* ════ LIBRARY ════ */
   if(screen==='LIBRARY') return (
-    <div className="fixed inset-0 bg-zinc-950 text-white flex flex-col">
-      <div className="flex-1 lib-scroll">
-        <div className="max-w-2xl mx-auto px-4 py-8 pb-24">
+    <div style={{width:'100%',height:'100%',background:'#0a0a0a',overflow:'hidden',display:'flex',flexDirection:'column'}}>
+      <div className="lscroll" style={{flex:1}}>
+        <div style={{maxWidth:'600px',margin:'0 auto',padding:'32px 16px 80px'}}>
 
-          <div className="flex items-center gap-2 mb-7">
+          <div style={{display:'flex',alignItems:'center',gap:'10px',marginBottom:'28px'}}>
             <svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><path d="M4 19.5A2.5 2.5 0 016.5 17H20M4 19.5A2.5 2.5 0 014 17V5a2 2 0 012-2h14v14H6.5A2.5 2.5 0 004 19.5z"/></svg>
-            <h1 className="text-2xl font-black tracking-widest shimmer uppercase">Novel Reader</h1>
+            <h1 style={{fontSize:'22px',fontWeight:900,letterSpacing:'0.15em',textTransform:'uppercase'}} className="shimmer">Novel Reader</h1>
           </div>
 
           {/* 변환기 */}
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden mb-8 shadow-2xl">
-            <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-800/80 border-b border-zinc-700 flex-wrap gap-2">
-              <span className="text-xs font-bold text-green-400 flex items-center gap-1">
-                <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                텍스트 → 비주얼노벨
-              </span>
-              <div className="flex gap-2">
-                <label className="btn flex items-center gap-1 cursor-pointer">
-                  <input type="file" accept=".txt,.docx,.json" onChange={handleFile} className="hidden"/>
-                  <Upload/> 텍스트
+          <div style={{background:'#111',border:'1px solid #222',borderRadius:'16px',overflow:'hidden',marginBottom:'28px'}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',background:'rgba(255,255,255,0.03)',borderBottom:'1px solid #222',flexWrap:'wrap',gap:'8px'}}>
+              <span style={{fontSize:'12px',fontWeight:700,color:'#4ade80'}}>⚡ 텍스트 → 비주얼노벨</span>
+              <div style={{display:'flex',gap:'8px'}}>
+                <label className="vbtn" style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
+                  <input type="file" accept=".txt,.docx,.json" onChange={handleFile} style={{display:'none'}}/>
+                  <IUp/> 텍스트
                 </label>
-                <label className={`btn flex items-center gap-1 cursor-pointer${(localImgs.length+dirImgs.length)?'  on':''}`}>
-                  <input type="file" accept="image/*" multiple onChange={handleImgs} className="hidden"/>
-                  🖼 이미지 {localImgs.length>0?`${localImgs.length}장`:(dirImgs.length>0?`폴더 ${dirImgs.length}장`:'선택')}
+                <label className={`vbtn${(localImgs.length+dirImgs.length)?' on':''}`} style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
+                  <input type="file" webkitdirectory="" mozdirectory="" multiple onChange={handleImgs} style={{display:'none'}}/>
+                  🖼 {localImgs.length>0?`${localImgs.length}장 ✓`:(dirImgs.length>0?`폴더 ${dirImgs.length}장`:'폴더 선택')}
                 </label>
               </div>
             </div>
-            <div className="p-4">
-              {dirImgs.length>0&&(
-                <div className="mb-3 text-xs text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 rounded-lg px-3 py-2">
-                  ✓ ./image/ 폴더에서 {dirImgs.length}개 이미지 자동 로드됨
-                </div>
-              )}
+            <div style={{padding:'16px'}}>
+              {dirImgs.length>0&&<div style={{marginBottom:'10px',fontSize:'11px',color:'#4ade80',background:'rgba(74,222,128,0.08)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'8px',padding:'8px 12px'}}>✓ ./image/ 폴더에서 {dirImgs.length}개 이미지 자동 로드</div>}
               <input value={ttl} onChange={e=>setTtl(e.target.value)} placeholder="제목 (선택)"
-                className="w-full bg-black/50 border border-zinc-700 focus:border-red-500 rounded-xl px-4 py-2 text-sm text-white outline-none mb-3 transition-colors"/>
+                style={{width:'100%',background:'rgba(255,255,255,0.04)',border:'1px solid #333',borderRadius:'10px',padding:'10px 14px',fontSize:'13px',color:'#fff',outline:'none',marginBottom:'10px'}}/>
               <textarea value={raw} onChange={e=>setRaw(e.target.value)}
                 placeholder={"소설 텍스트를 붙여넣으세요.\n'화자: 대사' 형식으로 화자 자동 인식."}
-                className="w-full h-40 bg-black/50 border border-zinc-700 focus:border-red-500 rounded-xl p-4 text-sm text-zinc-300 outline-none lib-scroll resize-none transition-colors mb-3"/>
+                style={{width:'100%',height:'140px',background:'rgba(255,255,255,0.04)',border:'1px solid #333',borderRadius:'10px',padding:'12px 14px',fontSize:'13px',color:'#d4d4d8',outline:'none',resize:'none',marginBottom:'10px'}}
+                className="lscroll"/>
               <select value={appTo} onChange={e=>setAppTo(e.target.value)}
-                className="w-full bg-zinc-800 border border-zinc-700 text-xs font-bold p-2.5 rounded-xl outline-none mb-3 text-white">
+                style={{width:'100%',background:'#1a1a1a',border:'1px solid #333',borderRadius:'10px',padding:'9px 12px',fontSize:'12px',fontWeight:700,color:'#fff',outline:'none',marginBottom:'10px'}}>
                 <option value="NEW">✨ 새 게임으로 생성</option>
                 {library.map(n=><option key={n.id} value={n.id}>➕ {n.meta.title} ({n.stages.length}화)</option>)}
               </select>
               <button onClick={generate}
-                className="w-full py-3 bg-red-700 hover:bg-red-600 active:scale-[0.98] rounded-xl font-black tracking-widest uppercase text-sm transition-all">
+                style={{width:'100%',padding:'12px',background:'#dc2626',borderRadius:'10px',fontWeight:900,fontSize:'13px',letterSpacing:'0.1em',textTransform:'uppercase',border:'none',color:'#fff',cursor:'pointer'}}>
                 변환하기
               </button>
             </div>
           </div>
 
-          <h2 className="text-base font-black mb-4 tracking-widest border-l-4 border-red-600 pl-3">MY NOVELS</h2>
-          <div className="flex flex-col gap-4">
+          <div style={{borderLeft:'3px solid #dc2626',paddingLeft:'12px',marginBottom:'16px',fontSize:'15px',fontWeight:900,letterSpacing:'0.1em'}}>MY NOVELS</div>
+          <div style={{display:'flex',flexDirection:'column',gap:'14px'}}>
             {library.map(n=>(
               <div key={n.id} onClick={()=>play(n)}
-                className="group relative h-48 bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden cursor-pointer hover:border-red-600 transition-all shadow-xl">
-                <div className="absolute inset-0 bg-cover bg-center transition-transform duration-700 group-hover:scale-105"
-                  style={{backgroundImage:`url(${n.meta.coverBg})`,filter:'brightness(0.4)'}}/>
-                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent"/>
-                <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={e=>exportN(e,n)} className="p-1.5 bg-black/60 hover:bg-white hover:text-black text-white rounded-full transition-colors"><DlI/></button>
-                  <button onClick={e=>delN(e,n.id)} className="p-1.5 bg-black/60 hover:bg-red-600 text-white rounded-full transition-colors"><TrashI/></button>
+                style={{position:'relative',height:'180px',borderRadius:'16px',overflow:'hidden',cursor:'pointer',border:'1px solid #222'}}>
+                <div style={{position:'absolute',inset:0,backgroundImage:`url(${n.meta.coverBg})`,backgroundSize:'cover',backgroundPosition:'center',filter:'brightness(0.4)',transition:'transform 0.5s'}}/>
+                <div style={{position:'absolute',inset:0,background:'linear-gradient(to top,#000 0%,rgba(0,0,0,0.4) 60%,transparent 100%)'}}/>
+                <div style={{position:'absolute',top:'10px',right:'10px',display:'flex',gap:'6px',opacity:0}} className="hover-btns">
+                  <button onClick={e=>expN(e,n)} style={{padding:'6px',background:'rgba(0,0,0,0.6)',border:'none',borderRadius:'50%',color:'#fff',cursor:'pointer'}}><IDl/></button>
+                  <button onClick={e=>delN(e,n.id)} style={{padding:'6px',background:'rgba(0,0,0,0.6)',border:'none',borderRadius:'50%',color:'#fff',cursor:'pointer'}}><ITrash/></button>
                 </div>
-                <div className="absolute bottom-0 left-0 p-4 w-full">
-                  <div className="flex gap-2 mb-1.5">
-                    <span className="bg-red-700 text-white px-2 py-0.5 font-black text-[9px] uppercase tracking-widest rounded-sm">{n.stages.length}화</span>
-                    <span className="bg-zinc-700 text-zinc-300 px-2 py-0.5 font-black text-[9px] rounded-sm">{n._n||0}장면</span>
+                <div style={{position:'absolute',bottom:0,left:0,padding:'16px'}}>
+                  <div style={{display:'flex',gap:'6px',marginBottom:'6px'}}>
+                    <span style={{background:'#dc2626',padding:'2px 7px',fontSize:'9px',fontWeight:900,letterSpacing:'0.1em',textTransform:'uppercase',borderRadius:'3px'}}>{n.stages.length}화</span>
+                    <span style={{background:'#333',color:'#aaa',padding:'2px 7px',fontSize:'9px',fontWeight:900,borderRadius:'3px'}}>{n._n||0}장면</span>
                   </div>
-                  <h3 className="text-lg font-black leading-tight">{n.meta.title}</h3>
+                  <div style={{fontSize:'17px',fontWeight:900}}>{n.meta.title}</div>
                 </div>
               </div>
             ))}
-            {!library.length&&<div className="py-16 text-center text-zinc-700 font-bold border-2 border-dashed border-zinc-800 rounded-2xl">생성된 작품이 없습니다</div>}
+            {!library.length&&<div style={{padding:'60px 0',textAlign:'center',color:'#3f3f46',fontWeight:700,border:'2px dashed #222',borderRadius:'16px'}}>생성된 작품이 없습니다</div>}
           </div>
         </div>
       </div>
     </div>
   );
 
-  /* ════════════ PLAY ════════════ */
-  if(screen==='PLAY'&&SD) {
-    const curLine=SD.lines[lineIdx];
+  /* ════ PLAY ════ */
+  if(screen==='PLAY'&&SD){
+    const curLine=SD.lines[li];
     const isNarr=curLine?.speaker==='서술';
 
     return (
-      <div className="fixed inset-0 bg-black overflow-hidden select-none">
+      <div style={{width:'100%',height:'100%',background:'#000',overflow:'hidden',position:'relative'}}>
 
-        {/* ══ 상단: 텍스트 패널 ══ */}
-        <div id="top-panel">
-          {/* 헤더 */}
-          <div className="flex items-center justify-between px-3 py-2 border-b border-white/5 flex-shrink-0">
-            <button onClick={()=>{window.speechSynthesis?.cancel();setAuto(false);setScreen('LIBRARY');}}
-              className="btn flex items-center gap-1"><Back/> 나가기</button>
-            {/* 진행 바 */}
-            <div style={{flex:1,margin:'0 10px',height:'3px',background:'rgba(255,255,255,0.07)',borderRadius:'2px'}}>
-              <div style={{height:'100%',width:`${prog}%`,background:'#dc2626',borderRadius:'2px',transition:'width 0.6s ease'}}/>
+        {/* ▲ 상단 50%: 이미지 */}
+        <div id="img-panel">
+          {imgSrc && (
+            <img
+              key={imgSrc}
+              src={imgSrc}
+              alt=""
+              className="fadein"
+              style={{filter:imgFilter, opacity:imgOk?1:0}}
+              onLoad={()=>setImgOk(true)}
+            />
+          )}
+          {!imgOk && (
+            <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',background:'#050505'}}>
+              <div style={{width:'60px',height:'60px',borderRadius:'50%',background:'rgba(220,38,38,0.12)',animation:'pulse 2s ease-in-out infinite'}}/>
             </div>
-            <span style={{fontSize:'9px',color:'rgba(255,255,255,0.2)',fontWeight:700,whiteSpace:'nowrap'}}>
-              {lineIdx+1}/{SD.lines.length}
-            </span>
+          )}
+          <div className="grad"/>
+          {/* 나가기 버튼 */}
+          <button
+            onClick={()=>{window.speechSynthesis?.cancel();setAuto(false);setScreen('LIBRARY');}}
+            className="vbtn"
+            style={{position:'absolute',top:'10px',left:'10px',zIndex:5,display:'flex',alignItems:'center',gap:'4px'}}>
+            <IBack/> 나가기
+          </button>
+          {/* 진행 바 */}
+          <div style={{position:'absolute',bottom:0,left:0,right:0,height:'3px',background:'rgba(255,255,255,0.07)'}}>
+            <div style={{height:'100%',width:`${prog}%`,background:'#dc2626',transition:'width 0.7s ease'}}/>
           </div>
+        </div>
+
+        {/* ▼ 하단 50%: 텍스트 + 컨트롤 */}
+        <div id="txt-panel">
 
           {/* 텍스트 */}
-          <div id="text-scroll" ref={txRef} onClick={advance}>
+          <div id="txt-scroll" ref={txR} onClick={advance}>
             <p style={{
               fontSize:`${fs}px`,
-              lineHeight:'2.05',
-              color: isNarr?'#cacacc':'#f1f1f3',
+              lineHeight:'2.0',
+              color: isNarr?'#b8b8bc':'#f0f0f2',
               fontWeight: isNarr?400:500,
-              letterSpacing: isNarr?'0.025em':'0.005em',
+              letterSpacing: isNarr?'0.03em':'0.005em',
               wordBreak:'keep-all',
             }}>
               {disp}
@@ -512,84 +539,56 @@ const App = () => {
             </p>
           </div>
 
-          {/* 텍스트 하단 힌트 */}
-          <div id="text-footer">
-            <span style={{fontSize:'9px',color:'rgba(255,255,255,0.15)',fontWeight:700}}>
-              {auto&&<span style={{color:'#dc2626'}}>● AUTO&nbsp;</span>}
-              {tts&&<span style={{color:'#60a5fa'}}>🔊&nbsp;</span>}
+          {/* 텍스트 푸터 */}
+          <div id="txt-footer">
+            <span style={{fontSize:'9px',color:'rgba(255,255,255,0.18)',fontWeight:700}}>
+              {li+1}/{SD.lines.length}
+              {auto&&<span style={{color:'#dc2626',marginLeft:'5px'}}>● AUTO</span>}
+              {tts&&<span style={{color:'#60a5fa',marginLeft:'4px'}}>🔊</span>}
             </span>
             {SD.isLast&&isAtEnd
-              ? <button onClick={()=>{window.speechSynthesis?.cancel();setScreen('LIBRARY');}}
+              ?<button onClick={()=>{window.speechSynthesis?.cancel();setScreen('LIBRARY');}}
                   style={{fontSize:'12px',color:'#f472b6',fontWeight:900,background:'none',border:'none',cursor:'pointer'}}>
                   완독 ✦
                 </button>
-              : (!auto&&!typing&&<span style={{fontSize:'10px',color:'rgba(255,255,255,0.18)',display:'flex',alignItems:'center',gap:'2px'}}>탭 <ChevR/></span>)
+              :(!auto&&!typing&&<span style={{fontSize:'10px',color:'rgba(255,255,255,0.2)',display:'flex',alignItems:'center',gap:'2px'}}>탭 <IChev/></span>)
             }
-          </div>
-        </div>
-
-        {/* ══ 하단: 이미지 + 컨트롤 ══ */}
-        <div id="bottom-panel">
-
-          {/* 이미지 영역 */}
-          <div id="img-area" onClick={advance}>
-            {(sceneBg||SD.bg)&&(
-              <img
-                key={sceneBg||SD.bg}
-                src={sceneBg||SD.bg}
-                alt=""
-                className="fade"
-                style={{filter:imgFilter,opacity:imgLoaded?1:0}}
-                onLoad={()=>setImgLoaded(true)}
-              />
-            )}
-            {!imgLoaded&&(
-              <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center'}}>
-                <div style={{width:'80px',height:'80px',borderRadius:'50%',background:'rgba(220,38,38,0.1)',animation:'pulse 2s ease-in-out infinite'}}/>
-              </div>
-            )}
-            <div className="img-fade"/>
           </div>
 
           {/* 컨트롤 바 */}
-          <div id="controls">
-            {/* 글자 크기 */}
-            <button className="btn" onClick={()=>setFs(f=>f<=14?17:f<=17?20:14)}>
+          <div id="ctrl-bar">
+            <button className="vbtn" onClick={()=>setFs(f=>f<=14?17:f<=17?20:14)}>
               가{fs<=14?'↑':fs<=17?'↑↑':'↓'}
             </button>
-            {/* 속도 */}
             {[[0.5,'🐢'],[1,'🚶'],[2,'🏃']].map(([s,ic])=>(
-              <button key={s} className={`btn${speed===s?' on':''}`} onClick={()=>setSpeed(s)}>{ic}</button>
+              <button key={s} className={`vbtn${spd===s?' on':''}`} onClick={()=>setSpd(s)}>{ic}</button>
             ))}
-            {/* 오토 */}
-            <button className={`btn flex items-center gap-1${auto?' on':''}`} onClick={()=>setAuto(p=>!p)}>
-              {auto?<PauseI/>:<PlayI/>}{auto?'정지':'자동'}
+            <button className={`vbtn${auto?' on':''}`} onClick={()=>setAuto(p=>!p)}
+              style={{display:'flex',alignItems:'center',gap:'4px'}}>
+              {auto?<IPause/>:<IPlay/>}{auto?'정지':'자동'}
             </button>
-            {/* TTS */}
-            <button className={`btn${tts?' on':''}`}
+            <button className={`vbtn${tts?' on':''}`}
               onClick={()=>setTts(p=>{if(p)window.speechSynthesis?.cancel();return !p;})}>
               {tts?'🔊':'🔇'}
             </button>
-            {/* 목소리 선택 */}
             {tts&&voices.length>0&&(
-              <select id="voice-select" value={voiceN} onChange={e=>setVoiceN(e.target.value)}>
-                {/* 한국어 목소리 먼저 */}
+              <select id="voice-sel" value={voiceN} onChange={e=>setVoiceN(e.target.value)}>
                 {voices.filter(v=>v.lang.startsWith('ko')).map(v=>(
-                  <option key={v.name} value={v.name}>🇰🇷 {v.name.replace('Google','').replace('Microsoft','').trim()}</option>
+                  <option key={v.name} value={v.name}>🇰🇷 {v.name.replace(/Google|Microsoft/g,'').trim()}</option>
                 ))}
-                {/* 그 외 목소리 */}
                 {voices.filter(v=>!v.lang.startsWith('ko')).map(v=>(
-                  <option key={v.name} value={v.name}>{v.lang.slice(0,2).toUpperCase()} {v.name.replace('Google','').replace('Microsoft','').trim()}</option>
+                  <option key={v.name} value={v.name}>{v.lang.slice(0,2).toUpperCase()} {v.name.replace(/Google|Microsoft/g,'').trim()}</option>
                 ))}
               </select>
             )}
           </div>
         </div>
+
       </div>
     );
   }
 
-  return <div className="fixed inset-0 bg-black flex items-center justify-center text-zinc-600 text-sm">로딩 중...</div>;
+  return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'#444',fontSize:'13px'}}>로딩 중...</div>;
 };
 
 ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
