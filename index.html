@@ -27,7 +27,7 @@ html, body {
 }
 
 /* ══════════════════════════════════
-   PLAY 화면: 상단 텍스트 / 하단 이미지 (위치 변경됨)
+   PLAY 화면: 상단 텍스트 / 하단 이미지
 ══════════════════════════════════ */
 
 /* 텍스트 영역: 화면 상단 50% */
@@ -38,7 +38,7 @@ html, body {
   right: 0;
   height: 50vh;
   background: #080808;
-  border-bottom: 1px solid rgba(255,255,255,0.1); /* 경계선을 아래로 변경 */
+  border-bottom: 1px solid rgba(255,255,255,0.1);
   display: flex;
   flex-direction: column;
   z-index: 20;
@@ -95,7 +95,6 @@ html, body {
 #img-panel .grad {
   position: absolute;
   inset: 0;
-  /* 텍스트창(상단)과 만나는 부분이 어두워지도록 그라데이션 방향 변경 (to top) */
   background: linear-gradient(to top,
     rgba(0,0,0,0.1) 0%,
     transparent 35%,
@@ -103,7 +102,6 @@ html, body {
   pointer-events: none;
   z-index: 2;
 }
-
 
 /* 버튼 */
 .vbtn {
@@ -426,16 +424,27 @@ const App = () => {
           <div style={{background:'#111',border:'1px solid #222',borderRadius:'16px',overflow:'hidden',marginBottom:'28px'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',background:'rgba(255,255,255,0.03)',borderBottom:'1px solid #222',flexWrap:'wrap',gap:'8px'}}>
               <span style={{fontSize:'12px',fontWeight:700,color:'#4ade80'}}>⚡ 텍스트 → 비주얼노벨</span>
-              <div style={{display:'flex',gap:'8px'}}>
+              
+              {/* 이미지 파일/폴더 선택 버튼 분리 */}
+              <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
                 <label className="vbtn" style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
                   <input type="file" accept=".txt,.docx,.json" onChange={handleFile} style={{display:'none'}}/>
                   <IUp/> 텍스트
                 </label>
-                <label className={`vbtn${(localImgs.length+dirImgs.length)?' on':''}`} style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
+                
+                {/* 개별 이미지 파일 선택 (새로 추가됨) */}
+                <label className={`vbtn${localImgs.length?' on':''}`} style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
+                  <input type="file" accept="image/*" multiple onChange={handleImgs} style={{display:'none'}}/>
+                  🖼 파일 {localImgs.length>0 ? `${localImgs.length}장` : ''}
+                </label>
+                
+                {/* 기존 폴더 선택 */}
+                <label className="vbtn" style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
                   <input type="file" webkitdirectory="" mozdirectory="" multiple onChange={handleImgs} style={{display:'none'}}/>
-                  🖼 {localImgs.length>0?`${localImgs.length}장 ✓`:(dirImgs.length>0?`폴더 ${dirImgs.length}장`:'폴더 선택')}
+                  📁 폴더
                 </label>
               </div>
+
             </div>
             <div style={{padding:'16px'}}>
               {dirImgs.length>0&&<div style={{marginBottom:'10px',fontSize:'11px',color:'#4ade80',background:'rgba(74,222,128,0.08)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'8px',padding:'8px 12px'}}>✓ ./image/ 폴더에서 {dirImgs.length}개 이미지 자동 로드</div>}
