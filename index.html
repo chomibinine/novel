@@ -95,7 +95,7 @@ html, body {
 #img-panel .grad {
   position: absolute;
   inset: 0;
-  background: linear-gradient(to top,
+  background: linear-gradient(to bottom,
     rgba(0,0,0,0.1) 0%,
     transparent 35%,
     rgba(0,0,0,0.55) 100%);
@@ -424,27 +424,16 @@ const App = () => {
           <div style={{background:'#111',border:'1px solid #222',borderRadius:'16px',overflow:'hidden',marginBottom:'28px'}}>
             <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'10px 16px',background:'rgba(255,255,255,0.03)',borderBottom:'1px solid #222',flexWrap:'wrap',gap:'8px'}}>
               <span style={{fontSize:'12px',fontWeight:700,color:'#4ade80'}}>⚡ 텍스트 → 비주얼노벨</span>
-              
-              {/* 이미지 파일/폴더 선택 버튼 분리 */}
-              <div style={{display:'flex',gap:'6px',flexWrap:'wrap'}}>
+              <div style={{display:'flex',gap:'8px'}}>
                 <label className="vbtn" style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
                   <input type="file" accept=".txt,.docx,.json" onChange={handleFile} style={{display:'none'}}/>
                   <IUp/> 텍스트
                 </label>
-                
-                {/* 개별 이미지 파일 선택 (새로 추가됨) */}
-                <label className={`vbtn${localImgs.length?' on':''}`} style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
-                  <input type="file" accept="image/*" multiple onChange={handleImgs} style={{display:'none'}}/>
-                  🖼 파일 {localImgs.length>0 ? `${localImgs.length}장` : ''}
-                </label>
-                
-                {/* 기존 폴더 선택 */}
-                <label className="vbtn" style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
+                <label className={`vbtn${(localImgs.length+dirImgs.length)?' on':''}`} style={{cursor:'pointer',display:'flex',alignItems:'center',gap:'4px'}}>
                   <input type="file" webkitdirectory="" mozdirectory="" multiple onChange={handleImgs} style={{display:'none'}}/>
-                  📁 폴더
+                  🖼 {localImgs.length>0?`${localImgs.length}장 ✓`:(dirImgs.length>0?`폴더 ${dirImgs.length}장`:'폴더 선택')}
                 </label>
               </div>
-
             </div>
             <div style={{padding:'16px'}}>
               {dirImgs.length>0&&<div style={{marginBottom:'10px',fontSize:'11px',color:'#4ade80',background:'rgba(74,222,128,0.08)',border:'1px solid rgba(74,222,128,0.2)',borderRadius:'8px',padding:'8px 12px'}}>✓ ./image/ 폴더에서 {dirImgs.length}개 이미지 자동 로드</div>}
@@ -501,8 +490,9 @@ const App = () => {
     return (
       <div style={{width:'100%',height:'100%',background:'#000',overflow:'hidden',position:'relative'}}>
 
-        {/* ▼ 상단 50%: 텍스트 + 컨트롤 */}
+        {/* ▲ 상단 50%: 텍스트 + 컨트롤 */}
         <div id="txt-panel">
+
           {/* 텍스트 */}
           <div id="txt-scroll" ref={txR} onClick={advance}>
             <p style={{
@@ -563,7 +553,7 @@ const App = () => {
           </div>
         </div>
 
-        {/* ▲ 하단 50%: 이미지 */}
+        {/* ▼ 하단 50%: 이미지 */}
         <div id="img-panel">
           {imgSrc && (
             <img
