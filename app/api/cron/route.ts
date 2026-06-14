@@ -1,3 +1,7 @@
+export const dynamic = 'force-dynamic'; // 👈 이 줄을 반드시 추가하세요! (Next.js 캐싱 강제 무효화)
+import { NextResponse } from 'next/server';
+import crypto from 'crypto';
+
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 
